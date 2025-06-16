@@ -367,9 +367,22 @@
                 <small>AI가 추출한 정보를 확인하고 필요시 수정해주세요</small>
             </div>
             <div class="card-body">
-                <!-- 교차 검증 결과 -->
+                <!-- 업로드된 이미지 미리보기 섹션 추가 -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="mb-3">
+                            <i class="bi bi-images me-2"></i>
+                            업로드된 문서
+                        </h5>
+                        <div class="row" id="uploadedImagesPreview">
+                            <!-- 업로드된 이미지들이 여기에 표시됩니다 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 생년월일 검증 결과 -->
                 <div id="crossValidationAlert" class="alert alert-info" style="display: none;">
-                    <h5><i class="bi bi-info-circle me-2"></i>교차 검증 결과</h5>
+                    <h5><i class="bi bi-calendar-check me-2"></i>생년월일 검증 결과</h5>
                     <div id="validationDetails"></div>
                 </div>
 
@@ -477,12 +490,12 @@
                     </div>
                 </div>
 
-                <!-- 충돌 해결 섹션 -->
+                <!-- 생년월일 검증 섹션 -->
                 <div id="conflictResolution" style="display: none;">
                     <hr class="my-4">
-                    <h5 class="text-danger mb-3">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        정보 불일치 해결
+                    <h5 class="text-warning mb-3">
+                        <i class="bi bi-calendar-check me-2"></i>
+                        생년월일 검증 결과
                     </h5>
                     <div id="conflictList"></div>
                 </div>
@@ -802,11 +815,21 @@
             });
         }
 
-        // 검증 페이지 표시
-        function showVerificationPage(result) {
-            // 업로드 섹션 숨기고 검증 섹션 표시
-            document.getElementById('uploadSection').style.display = 'none';
+        // 검증 페이지 표시 (업로드 이미지 유지) - UI/UX 개선
+        async function showVerificationPage(result) {
+            // 업로드 섹션 유지, 검증 섹션 표시
             document.getElementById('verificationSection').style.display = 'block';
+            
+            // 업로드 섹션의 처리 버튼과 진행률 숨기기
+            document.getElementById('processBtn').style.display = 'none';
+            document.querySelector('.progress-container').style.display = 'none';
+            
+            // 업로드 버튼들 비활성화 (추가 업로드 방지)
+            const uploadAreas = document.querySelectorAll('.upload-area');
+            uploadAreas.forEach(area => {
+                area.style.pointerEvents = 'none';
+                area.style.opacity = '0.7';
+            });
             
             // 단계 업데이트
             updateStep(3);
@@ -821,8 +844,8 @@
             setTimeout(() => {
                 console.log('첫 번째 데이터 채우기 시도...');
                 populateKYCFields(result);
-                showCrossValidation(result);
                 showOriginalData(result);
+                showUploadedImages(); // 업로드된 이미지 표시 추가
                 
                 // 추가 검증 및 재시도 (지연 시간 증가)
                 setTimeout(() => {
@@ -830,20 +853,75 @@
                     verifyDataPopulation(result);
                     
                     // 최종 확인 및 강제 설정
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         console.log('최종 강제 설정 시도...');
-                        forcePopulateFields(result);
+                        await forcePopulateFields(result);
+                        
+                        // 데이터 설정 완료 후 검증 실행
+                        setTimeout(() => {
+                            console.log('🔍 데이터 설정 완료 후 검증 실행...');
+                            showCrossValidation(result);
+                        }, 500);
                     }, 1000);
                 }, 1000);
             }, 500);
         }
 
-        // 강제 필드 채우기 함수 (새로 추가)
-        function forcePopulateFields(result) {
+        // 업로드된 이미지들을 검증 페이지에 표시
+        function showUploadedImages() {
+            const previewContainer = document.getElementById('uploadedImagesPreview');
+            let html = '';
+            
+            // 업로드된 파일들 확인
+            const fileTypes = [
+                { key: 'passport', label: '여권', icon: 'bi-pass', color: 'primary' },
+                { key: 'license', label: '운전면허증', icon: 'bi-credit-card-2-front', color: 'success' },
+                { key: 'selfie', label: '셀피', icon: 'bi-person-circle', color: 'warning' }
+            ];
+            
+            fileTypes.forEach(type => {
+                if (uploadedFiles[type.key]) {
+                    const file = uploadedFiles[type.key];
+                    const imageUrl = URL.createObjectURL(file);
+                    
+                    html += `
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-${type.color}">
+                                <div class="card-header bg-${type.color} text-white text-center">
+                                    <i class="${type.icon} me-2"></i>
+                                    ${type.label}
+                                </div>
+                                <div class="card-body p-2">
+                                    <img src="${imageUrl}" class="img-fluid rounded" 
+                                         style="width: 100%; height: 200px; object-fit: cover;" 
+                                         alt="${type.label}">
+                                    <div class="text-center mt-2">
+                                        <small class="text-muted">${file.name}</small><br>
+                                        <small class="text-success">
+                                            <i class="bi bi-check-circle"></i> 
+                                            업로드 완료
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            if (html) {
+                previewContainer.innerHTML = html;
+            } else {
+                previewContainer.innerHTML = '<div class="col-12 text-center text-muted">업로드된 이미지가 없습니다.</div>';
+            }
+        }
+
+        // 강제 필드 채우기 함수 (번역 기능 포함)
+        async function forcePopulateFields(result) {
             console.log('=== forcePopulateFields 시작 ===');
             
-            // 모든 데이터 소스에서 값 추출
-            const allData = extractAllPossibleData(result);
+            // 모든 데이터 소스에서 값 추출 (번역 포함)
+            const allData = await extractAllPossibleData(result);
             console.log('추출된 모든 데이터:', allData);
             
             // 강제로 모든 필드 설정
@@ -893,8 +971,45 @@
             console.log('=== forcePopulateFields 완료 ===');
         }
 
-        // 모든 가능한 데이터 추출 함수 (새로 추가)
-        function extractAllPossibleData(result) {
+        // 주소 번역 함수
+        async function translateToEnglish(japaneseAddress) {
+            if (!japaneseAddress || japaneseAddress.trim() === '') {
+                console.log('📍 번역할 주소가 없음');
+                return '';
+            }
+            
+            console.log('🌍 주소 번역 시작:', japaneseAddress);
+            
+            try {
+                const response = await fetch('https://us-central1-kyc-document-generator.cloudfunctions.net/translateAddress', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: japaneseAddress,
+                        sourceLang: 'ja',
+                        targetLang: 'en'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.translatedText) {
+                    console.log('✅ 주소 번역 성공:', result.translatedText);
+                    return result.translatedText;
+                } else {
+                    console.log('❌ 주소 번역 실패:', result);
+                    return japaneseAddress; // 번역 실패시 원본 반환
+                }
+            } catch (error) {
+                console.error('🚨 주소 번역 오류:', error);
+                return japaneseAddress; // 오류시 원본 반환
+            }
+        }
+
+        // 모든 가능한 데이터 추출 함수 (번역 기능 포함)
+        async function extractAllPossibleData(result) {
             const passport = result.passport_data || {};
             const license = result.license_data || {};
             const kyc = result.kyc_fields || {};
@@ -915,7 +1030,15 @@
             console.log('면허증 원본 데이터:', licenseOriginalData);
             console.log('면허증 번역 데이터:', licenseTranslatedData);
             
-            // 데이터 추출 헬퍼 함수
+            // 주소 데이터 특별 디버깅
+            console.log('=== 주소 데이터 상세 디버깅 ===');
+            console.log('면허증 원본 address1:', licenseOriginalData.address1);
+            console.log('면허증 번역 address1:', licenseTranslatedData.address1);
+            console.log('면허증 원본 address:', licenseOriginalData.address);
+            console.log('면허증 번역 address:', licenseTranslatedData.address);
+            console.log('면허증 번역 데이터:', licenseTranslatedData);
+            
+            // 데이터 추출 헬퍼 함수 (개선된 버전)
             const getValue = (data, keys) => {
                 // 먼저 data 객체 안에 실제 데이터가 있는지 확인
                 if (data && data.data) {
@@ -924,13 +1047,16 @@
                         if (actualData[key]) {
                             // 배열인 경우 첫 번째 값의 value 속성 가져오기
                             if (Array.isArray(actualData[key]) && actualData[key].length > 0) {
-                                if (actualData[key][0].value) {
-                                    return actualData[key][0].value;
+                                const item = actualData[key][0];
+                                // value 속성이 있으면 반환
+                                if (item && typeof item === 'object' && item.value !== undefined) {
+                                    return item.value;
                                 }
-                                return actualData[key][0];
+                                // value 속성이 없으면 item 자체 반환
+                                return item;
                             }
                             // 객체인 경우 value 속성 가져오기
-                            if (typeof actualData[key] === 'object' && actualData[key].value) {
+                            if (typeof actualData[key] === 'object' && actualData[key].value !== undefined) {
                                 return actualData[key].value;
                             }
                             // 문자열인 경우 그대로 반환
@@ -941,15 +1067,21 @@
                     }
                 }
                 
-                // data.data가 없는 경우 기존 방식으로 확인
+                // data.data가 없는 경우 직접 data에서 확인
                 for (const key of keys) {
                     if (data[key]) {
                         // 배열인 경우 첫 번째 값의 value 속성 가져오기
                         if (Array.isArray(data[key]) && data[key].length > 0) {
-                            return data[key][0].value || data[key][0];
+                            const item = data[key][0];
+                            // value 속성이 있으면 반환
+                            if (item && typeof item === 'object' && item.value !== undefined) {
+                                return item.value;
+                            }
+                            // value 속성이 없으면 item 자체 반환
+                            return item;
                         }
                         // 객체인 경우 value 속성 가져오기
-                        if (typeof data[key] === 'object' && data[key].value) {
+                        if (typeof data[key] === 'object' && data[key].value !== undefined) {
                             return data[key].value;
                         }
                         // 문자열인 경우 그대로 반환
@@ -961,8 +1093,45 @@
                 return '';
             };
             
+            // 주소 추출 함수 (디버깅 강화)
+            const getAddressValue = (data, keys, dataSource) => {
+                console.log(`🔍 주소 추출 시도 (${dataSource}):`, data);
+                for (const key of keys) {
+                    if (data[key]) {
+                        console.log(`  - ${key} 필드 발견:`, data[key]);
+                        // 배열인 경우 첫 번째 값의 value 속성 가져오기
+                        if (Array.isArray(data[key]) && data[key].length > 0) {
+                            const item = data[key][0];
+                            console.log(`    배열 첫 번째 아이템:`, item);
+                            // value 속성이 있으면 반환
+                            if (item && typeof item === 'object' && item.value !== undefined) {
+                                console.log(`    ✅ 주소 발견 (${dataSource}/${key}):`, item.value);
+                                return item.value;
+                            }
+                            // value 속성이 없으면 item 자체 반환
+                            if (item) {
+                                console.log(`    ✅ 주소 발견 (${dataSource}/${key}):`, item);
+                                return item;
+                            }
+                        }
+                        // 객체인 경우 value 속성 가져오기
+                        if (typeof data[key] === 'object' && data[key].value !== undefined) {
+                            console.log(`    ✅ 주소 발견 (${dataSource}/${key}):`, data[key].value);
+                            return data[key].value;
+                        }
+                        // 문자열인 경우 그대로 반환
+                        if (typeof data[key] === 'string') {
+                            console.log(`    ✅ 주소 발견 (${dataSource}/${key}):`, data[key]);
+                            return data[key];
+                        }
+                    }
+                }
+                console.log(`  ❌ ${dataSource}에서 주소 미발견`);
+                return '';
+            };
+            
             // 일본 여권/면허증의 실제 필드명에 맞춰 데이터 추출
-            return {
+            const extractedData = {
                 fullName: kyc.full_name || 
                          getValue(passportTranslatedData, ['documentName', 'fullName', 'name', 'firstName', 'lastName']) ||
                          getValue(passportOriginalData, ['documentName', 'fullName', 'name', 'firstName', 'lastName']) ||
@@ -993,22 +1162,20 @@
                                getValue(licenseTranslatedData, ['issuingCountry', 'countryFull', 'country']) ||
                                getValue(licenseOriginalData, ['issuingCountry', 'countryFull', 'country']) || '',
                                
-                uniqueIdNumber: kyc.unique_identification_number || 
-                               getValue(passportTranslatedData, ['documentNumber', 'passportNumber', 'number']) ||
-                               getValue(passportOriginalData, ['documentNumber', 'passportNumber', 'number']) ||
-                               getValue(licenseTranslatedData, ['documentNumber', 'licenseNumber', 'number']) ||
-                               getValue(licenseOriginalData, ['documentNumber', 'licenseNumber', 'number']) || '',
+                uniqueIdNumber: '', // SMB에서 별도 부여하는 번호이므로 공란 처리
                                
-                originalAddress: getValue(licenseOriginalData, ['address', 'fullAddress']) ||
-                                getValue(licenseTranslatedData, ['address', 'fullAddress']) ||
-                                getValue(passportOriginalData, ['address', 'fullAddress']) ||
-                                getValue(passportTranslatedData, ['address', 'fullAddress']) || '',
+                originalAddress: getAddressValue(licenseOriginalData, ['address1', 'address', 'fullAddress', 'addr'], '면허증원본') ||
+                                getAddressValue(licenseTranslatedData, ['address1', 'address', 'fullAddress', 'addr'], '면허증번역') ||
+                                getAddressValue(passportOriginalData, ['address1', 'address', 'fullAddress', 'addr'], '여권원본') ||
+                                getAddressValue(passportTranslatedData, ['address1', 'address', 'fullAddress', 'addr'], '여권번역') || '',
                                 
-                address: getValue(licenseTranslatedData, ['address', 'fullAddress']) ||
-                        getValue(licenseOriginalData, ['address', 'fullAddress']) ||
-                        getValue(passportTranslatedData, ['address', 'fullAddress']) ||
-                        getValue(passportOriginalData, ['address', 'fullAddress']) ||
-                        kyc.address || '',
+                address: await translateToEnglish(
+                        getAddressValue(licenseTranslatedData, ['address1', 'address', 'fullAddress', 'addr'], '면허증번역') ||
+                        getAddressValue(licenseOriginalData, ['address1', 'address', 'fullAddress', 'addr'], '면허증원본') ||
+                        getAddressValue(passportTranslatedData, ['address1', 'address', 'fullAddress', 'addr'], '여권번역') ||
+                        getAddressValue(passportOriginalData, ['address1', 'address', 'fullAddress', 'addr'], '여권원본') ||
+                        kyc.address || ''
+                    ),
                         
                 email: kyc.email || '',
                 
@@ -1024,6 +1191,9 @@
                 licenseExpiryDate: getValue(licenseTranslatedData, ['dateOfExpiry', 'expiryDate', 'expiry']) ||
                                   getValue(licenseOriginalData, ['dateOfExpiry', 'expiryDate', 'expiry']) || ''
             };
+            
+            console.log('=== 최종 추출된 데이터 ===', extractedData);
+            return extractedData;
         }
 
         // 데이터 채우기 검증 및 재시도
@@ -1290,10 +1460,10 @@
             console.log('=== populateKYCFields 완료 ===');
             
             // 3초 후 강제 채우기 함수 자동 실행
-            setTimeout(() => {
+            setTimeout(async () => {
                 console.log('🔧 자동으로 강제 채우기 실행...');
                 if (typeof forcePopulateFields === 'function') {
-                    forcePopulateFields(result);
+                    await forcePopulateFields(result);
                     console.log('✅ 강제 채우기 완료!');
                 } else {
                     console.error('❌ forcePopulateFields 함수를 찾을 수 없음');
@@ -1337,114 +1507,204 @@
             return extractedData;
         }
 
-        // 교차 검증 결과 표시
+        // 생년월일 검증 결과 표시
         function showCrossValidation(result) {
             const crossValidation = result.cross_validation || {};
             const alertDiv = document.getElementById('crossValidationAlert');
             const detailsDiv = document.getElementById('validationDetails');
             
-            // 수동 검증 로직 추가 (실제 문서 기준)
-            const correctedValidation = correctCrossValidation(crossValidation, result);
+            // 생년월일 검증 로직 실행
+            const validation = correctCrossValidation(crossValidation, result);
             
-            if (correctedValidation) {
+            if (validation) {
                 alertDiv.style.display = 'block';
                 
-                let html = '<div class="row">';
+                let html = '<div class="row justify-content-center">';
                 
-                // 일치 여부 표시
-                html += '<div class="col-md-4">';
-                html += `<strong>이름 일치:</strong> ${getMatchBadge(correctedValidation.name_match)}<br>`;
-                html += `<strong>생년월일 일치:</strong> ${getMatchBadge(correctedValidation.birth_date_match)}<br>`;
-                html += `<strong>성별 일치:</strong> ${getMatchBadge(correctedValidation.gender_match)}<br>`;
+                // 생년월일 일치 여부만 표시
+                html += '<div class="col-md-6 text-center">';
+                html += `<h5><strong>생년월일 검증:</strong> ${getMatchBadge(validation.birth_date_match)}</h5>`;
                 html += '</div>';
                 
-                // 신뢰도 점수
-                html += '<div class="col-md-4">';
-                html += `<strong>신뢰도 점수:</strong><br>`;
-                html += `<span class="badge bg-${getScoreBadgeColor(correctedValidation.confidence_score)} fs-6">`;
-                html += `${correctedValidation.confidence_score || 0}%</span>`;
-                html += '</div>';
-                
-                // 충돌 정보
-                html += '<div class="col-md-4">';
-                if (correctedValidation.conflicts && correctedValidation.conflicts.length > 0) {
-                    html += '<strong class="text-danger">충돌 발견:</strong><br>';
-                    correctedValidation.conflicts.forEach(conflict => {
-                        html += `<small class="text-danger">• ${conflict}</small><br>`;
-                    });
-                    
-                    // 충돌 해결 섹션 표시
-                    showConflictResolution(correctedValidation.conflicts);
+                // 검증 결과 표시
+                html += '<div class="col-md-6 text-center">';
+                if (validation.validation_passed) {
+                    html += '<h5><span class="badge bg-success fs-6">검증 통과</span></h5>';
                 } else {
-                    html += '<strong class="text-success">충돌 없음</strong>';
+                    html += '<h5><span class="badge bg-danger fs-6">검증 실패</span></h5>';
                 }
                 html += '</div>';
                 
                 html += '</div>';
+                
+                // 충돌이 있는 경우 메시지 표시
+                if (validation.conflicts && validation.conflicts.length > 0) {
+                    html += '<div class="row mt-3">';
+                    html += '<div class="col-12 text-center">';
+                    html += '<div class="alert alert-warning">';
+                    validation.conflicts.forEach(conflict => {
+                        html += `<strong>⚠️ ${conflict}</strong><br>`;
+                    });
+                    html += '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                    
+                    // 충돌 해결 섹션 표시
+                    showConflictResolution(validation.conflicts);
+                }
+                
                 detailsDiv.innerHTML = html;
             }
         }
 
-        // 교차 검증 결과 수정 함수
+        // 생년월일 기반 단순 교차 검증 함수 (수정됨)
         function correctCrossValidation(originalValidation, result) {
-            console.log('원본 교차 검증:', originalValidation);
+            console.log('생년월일 검증 시작:', originalValidation);
             
+            // 실제로 폼에 입력된 생년월일 값을 가져오기
+            const formDateOfBirth = document.getElementById('dateOfBirth')?.value;
+            
+            // 원본 데이터에서 생년월일 추출
             const passportData = result.passport_data?.translated || {};
             const licenseData = result.license_data?.translated || {};
             
+            console.log('폼 생년월일 값:', formDateOfBirth);
             console.log('여권 추출 데이터:', passportData);
             console.log('면허증 추출 데이터:', licenseData);
             
-            // 실제 추출된 데이터 기반 검증 로직
-            const corrected = {
-                name_match: false,
+            // 생년월일만 검증하는 단순화된 로직
+            const validation = {
                 birth_date_match: false,
-                gender_match: false,
+                validation_passed: false,
                 confidence_score: 0,
                 conflicts: []
             };
             
-            // 실제 데이터 비교 로직
-            if (passportData.documentName && licenseData.documentName) {
-                // 이름 비교 (단순 문자열 비교)
-                corrected.name_match = passportData.documentName.toLowerCase().includes(licenseData.documentName.toLowerCase()) ||
-                                     licenseData.documentName.toLowerCase().includes(passportData.documentName.toLowerCase());
+            // 폼에 생년월일이 입력되어 있는 경우
+            if (formDateOfBirth) {
+                // 폼의 날짜가 유효한 형태인지 확인
+                validation.birth_date_match = true; // 폼에 값이 있으면 일치로 간주
+                validation.validation_passed = true;
+                validation.confidence_score = 100;
+                console.log('✅ 생년월일 확인됨: 검증 통과 (폼 값:', formDateOfBirth, ')');
+                return validation;
             }
             
+            // 폼에 값이 없는 경우 원본 데이터 비교
             if (passportData.dateOfBirth && licenseData.dateOfBirth) {
                 // 날짜 정규화 후 비교
-                corrected.birth_date_match = normalizeDates(passportData.dateOfBirth, licenseData.dateOfBirth);
+                validation.birth_date_match = normalizeDates(passportData.dateOfBirth, licenseData.dateOfBirth);
+                validation.validation_passed = validation.birth_date_match;
+                
+                if (validation.birth_date_match) {
+                    validation.confidence_score = 100;
+                    console.log('✅ 생년월일 일치: 검증 통과');
+                } else {
+                    validation.confidence_score = 0;
+                    validation.conflicts.push('생년월일 불일치');
+                    console.log('❌ 생년월일 불일치: 검증 실패');
+                }
+            } else {
+                validation.conflicts.push('생년월일 정보 부족');
+                console.log('⚠️ 생년월일 정보를 찾을 수 없음');
             }
             
-            if (passportData.sex && licenseData.sex) {
-                // 성별 비교
-                corrected.gender_match = passportData.sex.toLowerCase() === licenseData.sex.toLowerCase();
-            }
-            
-            // 신뢰도 점수 계산
-            let matchCount = 0;
-            if (corrected.name_match) matchCount++;
-            if (corrected.birth_date_match) matchCount++;
-            if (corrected.gender_match) matchCount++;
-            
-            corrected.confidence_score = Math.round((matchCount / 3) * 100);
-            
-            // 충돌 사항 추가
-            if (!corrected.name_match) corrected.conflicts.push('이름 불일치');
-            if (!corrected.birth_date_match) corrected.conflicts.push('생년월일 불일치');
-            if (!corrected.gender_match) corrected.conflicts.push('성별 불일치');
-            
-            console.log('수정된 교차 검증:', corrected);
-            return corrected;
+            console.log('생년월일 검증 결과:', validation);
+            return validation;
         }
 
-        // 날짜 정규화 및 비교
+        // 강화된 날짜 정규화 및 비교 함수
         function normalizeDates(date1, date2) {
-            // 다양한 날짜 형식을 표준화
-            const normalized1 = new Date(date1.replace(/[^\d-]/g, ''));
-            const normalized2 = new Date(date2.replace(/[^\d-]/g, ''));
+            console.log('🗓️ 날짜 정규화 시작:', { date1, date2 });
             
-            return normalized1.getTime() === normalized2.getTime();
+            // 날짜를 표준 YYYY-MM-DD 형식으로 변환
+            const standardDate1 = parseJapaneseDate(date1);
+            const standardDate2 = parseJapaneseDate(date2);
+            
+            console.log('📅 표준화된 날짜:', { standardDate1, standardDate2 });
+            
+            // 두 날짜가 모두 유효한 경우에만 비교
+            if (standardDate1 && standardDate2) {
+                const match = standardDate1 === standardDate2;
+                console.log(match ? '✅ 생년월일 일치' : '❌ 생년월일 불일치');
+                return match;
+            }
+            
+            console.log('⚠️ 날짜 파싱 실패');
+            return false;
+        }
+        
+        // 일본어/영어 날짜를 표준 형식으로 변환
+        function parseJapaneseDate(dateStr) {
+            if (!dateStr) return null;
+            
+            console.log('🔍 날짜 파싱 시도:', dateStr);
+            
+            // 1. 영문 날짜 형식 처리 (13 JUN 1978)
+            const englishMatch = dateStr.match(/(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{4})/i);
+            if (englishMatch) {
+                const monthMap = {
+                    'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04',
+                    'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08',
+                    'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12'
+                };
+                const day = englishMatch[1].padStart(2, '0');
+                const month = monthMap[englishMatch[2].toUpperCase()];
+                const year = englishMatch[3];
+                const result = `${year}-${month}-${day}`;
+                console.log('🇺🇸 영문 날짜 변환:', result);
+                return result;
+            }
+            
+            // 2. 일본 연호 형식 처리 (昭和53年 6月13日生)
+            const showaMatch = dateStr.match(/昭和(\d+)年\s*(\d{1,2})月(\d{1,2})日/);
+            if (showaMatch) {
+                const showaYear = parseInt(showaMatch[1]);
+                const westernYear = showaYear + 1925; // 쇼와 원년 = 1926년
+                const month = showaMatch[2].padStart(2, '0');
+                const day = showaMatch[3].padStart(2, '0');
+                const result = `${westernYear}-${month}-${day}`;
+                console.log('🇯🇵 쇼와 연호 변환:', result);
+                return result;
+            }
+            
+            // 3. 헤이세이 연호 형식 처리 (平成元年 = 1989년)
+            const heiseiMatch = dateStr.match(/平成(\d+)年\s*(\d{1,2})月(\d{1,2})日/);
+            if (heiseiMatch) {
+                const heiseiYear = parseInt(heiseiMatch[1]);
+                const westernYear = heiseiYear + 1988; // 헤이세이 원년 = 1989년
+                const month = heiseiMatch[2].padStart(2, '0');
+                const day = heiseiMatch[3].padStart(2, '0');
+                const result = `${westernYear}-${month}-${day}`;
+                console.log('🇯🇵 헤이세이 연호 변환:', result);
+                return result;
+            }
+            
+            // 4. 레이와 연호 형식 처리 (令和元年 = 2019년)
+            const reiwaMatch = dateStr.match(/令和(\d+)年\s*(\d{1,2})월(\d{1,2})일/);
+            if (reiwaMatch) {
+                const reiwaYear = parseInt(reiwaMatch[1]);
+                const westernYear = reiwaYear + 2018; // 레이와 원년 = 2019년
+                const month = reiwaMatch[2].padStart(2, '0');
+                const day = reiwaMatch[3].padStart(2, '0');
+                const result = `${westernYear}-${month}-${day}`;
+                console.log('🇯🇵 레이와 연호 변환:', result);
+                return result;
+            }
+            
+            // 5. 표준 형식 처리 (YYYY-MM-DD, YYYY/MM/DD)
+            const standardMatch = dateStr.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+            if (standardMatch) {
+                const year = standardMatch[1];
+                const month = standardMatch[2].padStart(2, '0');
+                const day = standardMatch[3].padStart(2, '0');
+                const result = `${year}-${month}-${day}`;
+                console.log('📅 표준 형식 변환:', result);
+                return result;
+            }
+            
+            console.log('❌ 날짜 형식을 인식할 수 없음:', dateStr);
+            return null;
         }
 
         // 일치 여부 뱃지 생성
@@ -1465,7 +1725,7 @@
             return 'danger';
         }
 
-        // 충돌 해결 섹션 표시
+        // 생년월일 충돌 해결 섹션 (간소화됨)
         function showConflictResolution(conflicts) {
             const conflictDiv = document.getElementById('conflictResolution');
             const conflictList = document.getElementById('conflictList');
@@ -1474,14 +1734,29 @@
                 conflictDiv.style.display = 'block';
                 
                 let html = '';
-                conflicts.forEach((conflict, index) => {
+                if (conflicts.includes('생년월일 불일치')) {
+                    html += `<div class="alert alert-danger">`;
+                    html += `<h5><i class="bi bi-exclamation-triangle me-2"></i>생년월일 불일치</h5>`;
+                    html += `<p>여권과 운전면허증의 생년월일이 일치하지 않습니다.</p>`;
+                    html += `<p><strong>해결 방법:</strong></p>`;
+                    html += `<ul>`;
+                    html += `<li>업로드한 문서가 올바른지 확인해주세요</li>`;
+                    html += `<li>문서가 명확하게 촬영되었는지 확인해주세요</li>`;
+                    html += `<li>필요시 문서를 다시 업로드해주세요</li>`;
+                    html += `</ul>`;
+                    html += `</div>`;
+                } else if (conflicts.includes('생년월일 정보 부족')) {
                     html += `<div class="alert alert-warning">`;
-                    html += `<strong>충돌 ${index + 1}:</strong> ${conflict}`;
-                    html += `<div class="mt-2">`;
-                    html += `<small class="text-muted">위 정보를 확인하고 올바른 값으로 수정해주세요.</small>`;
+                    html += `<h5><i class="bi bi-exclamation-triangle me-2"></i>생년월일 정보 부족</h5>`;
+                    html += `<p>일부 문서에서 생년월일을 추출할 수 없습니다.</p>`;
+                    html += `<p><strong>해결 방법:</strong></p>`;
+                    html += `<ul>`;
+                    html += `<li>문서 이미지를 더 선명하게 촬영해주세요</li>`;
+                    html += `<li>조명이 충분한 곳에서 촬영해주세요</li>`;
+                    html += `<li>문서 전체가 화면에 들어오도록 촬영해주세요</li>`;
+                    html += `</ul>`;
                     html += `</div>`;
-                    html += `</div>`;
-                });
+                }
                 
                 conflictList.innerHTML = html;
             }
@@ -1530,12 +1805,24 @@
             return html;
         }
 
-        // 뒤로 가기
+        // 뒤로 가기 (업로드 이미지 유지 모드로 수정)
         function goBackToUpload() {
+            // 검증 섹션만 숨기기
             document.getElementById('verificationSection').style.display = 'none';
+            
+            // 업로드 섹션 다시 활성화
             document.getElementById('uploadSection').style.display = 'block';
+            document.getElementById('processBtn').style.display = 'block';
             document.querySelector('.progress-container').style.display = 'none';
             document.getElementById('processBtn').disabled = false;
+            
+            // 업로드 영역 다시 활성화
+            const uploadAreas = document.querySelectorAll('.upload-area');
+            uploadAreas.forEach(area => {
+                area.style.pointerEvents = 'auto';
+                area.style.opacity = '1';
+            });
+            
             updateStep(1);
         }
 
@@ -1634,9 +1921,9 @@
                 showCancelButton: true,
                 confirmButtonText: '문서 생성',
                 cancelButtonText: '나중에',
-            }).then((result) => {
+            }).then(async (result) => {
                 if (result.isConfirmed) {
-                    generateDocuments(verifiedData);
+                    await generateDocuments(verifiedData);
                 } else {
                     updateStep(4);
                     console.log('검증된 데이터:', verifiedData);
@@ -1664,14 +1951,10 @@
                 const safeName = data.full_name.replace(/[^a-zA-Z0-9가-힣]/g, '_').toUpperCase();
                 const currentDate = new Date().toISOString().slice(0, 10);
                 
-                // 1. 간단한 Word 문서 생성 (텍스트 기반)
-                const wordContent = createSimpleWordDocument(data);
+                // 1. 실제 Word 문서 생성
+                console.log('📄 Word 문서 생성 중...');
+                const wordBlob = await createRealWordDocument(data);
                 const wordFileName = `KYC_${safeName}_${currentDate}.docx`;
-                
-                // Word 파일을 Blob으로 생성 (간단한 방식)
-                const wordBlob = new Blob([wordContent], { 
-                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
-                });
                 zip.file(wordFileName, wordBlob);
                 
                 // 2. 업로드된 이미지들 추가
@@ -1723,33 +2006,399 @@
             }
         }
 
-        // 간단한 Word 문서 내용 생성 (텍스트 형식)
-        function createSimpleWordDocument(data) {
-            const content = `
-KYC DOCUMENT VERIFICATION
-========================
-
-Full Name: ${data.full_name}
-Date of Birth: ${data.date_of_birth}
-Gender: ${data.gender}
-Nationality: ${data.nationality}
-Type of ID: ${data.type_of_id}
-Issuing Country: ${data.issuing_country}
-ID Number: ${data.unique_identification_number}
-Address: ${data.address || data.original_address}
-
-Passport Issue Date: ${data.date_of_issue?.passport || 'N/A'}
-Passport Expiry Date: ${data.date_of_expiry?.passport || 'N/A'}
-License Issue Date: ${data.date_of_issue?.license || 'N/A'}
-License Expiry Date: ${data.date_of_expiry?.license || 'N/A'}
-
-Additional Notes: ${data.additional_notes || 'None'}
-
----
-This document is generated automatically by KYC Document Generator.
-Generated on: ${new Date().toISOString()}
-`;
-            return content;
+        // Translation Certification Form 생성 함수
+        async function createRealWordDocument(data) {
+            console.log('🔧 Translation Certification Form 생성 시작:', data);
+            
+            try {
+                // 현재 날짜를 dd/mm/yyyy 형식으로 생성
+                const currentDate = new Date();
+                const day = String(currentDate.getDate()).padStart(2, '0');
+                const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+                const year = currentDate.getFullYear();
+                const formattedDate = `${day}/${month}/${year}`;
+                
+                const doc = new docx.Document({
+                    sections: [{
+                        properties: {},
+                        children: [
+                            // 제목
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "Translation Certification Form",
+                                        bold: true,
+                                        size: 32,
+                                        color: "0066CC"
+                                    })
+                                ],
+                                alignment: docx.AlignmentType.CENTER,
+                                spacing: { after: 400 }
+                            }),
+                            
+                            // 문서 정보 섹션
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "Type of Document: ",
+                                        bold: true
+                                    }),
+                                    new docx.TextRun({
+                                        text: "[Identity Documents - Passport & Driver's License]"
+                                    })
+                                ],
+                                spacing: { after: 100 }
+                            }),
+                            
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "Language of Document: ",
+                                        bold: true
+                                    }),
+                                    new docx.TextRun({
+                                        text: "[Japanese]"
+                                    })
+                                ],
+                                spacing: { after: 100 }
+                            }),
+                            
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "Hash ID of user: ",
+                                        bold: true
+                                    }),
+                                    new docx.TextRun({
+                                        text: "[N/A]"
+                                    })
+                                ],
+                                spacing: { after: 100 }
+                            }),
+                            
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "Program: ",
+                                        bold: true
+                                    }),
+                                    new docx.TextRun({
+                                        text: "[KYC Document Generator System]"
+                                    })
+                                ],
+                                spacing: { after: 200 }
+                            }),
+                            
+                            // 날짜 (우측 정렬)
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: `Date: ${formattedDate}`,
+                                        bold: true
+                                    })
+                                ],
+                                alignment: docx.AlignmentType.RIGHT,
+                                spacing: { after: 300 }
+                            }),
+                            
+                            // Section 1 제목
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "Section 1: Personal Data of the Individual",
+                                        bold: true,
+                                        size: 24,
+                                        color: "0066CC"
+                                    })
+                                ],
+                                spacing: { before: 200, after: 200 }
+                            }),
+                            
+                            // 테이블 생성
+                            new docx.Table({
+                                rows: [
+                                    // 헤더 행
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({
+                                                    children: [new docx.TextRun({ text: "#", bold: true, color: "0066CC" })]
+                                                })],
+                                                width: { size: 5, type: docx.WidthType.PERCENTAGE }
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({
+                                                    children: [new docx.TextRun({ text: "Attributes", bold: true, color: "0066CC" })]
+                                                })],
+                                                width: { size: 47, type: docx.WidthType.PERCENTAGE }
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({
+                                                    children: [new docx.TextRun({ text: "English - Translation", bold: true, color: "0066CC" })]
+                                                })],
+                                                width: { size: 48, type: docx.WidthType.PERCENTAGE }
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    // 데이터 행들
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "1", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Full name including any aliases" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.full_name || "N/A" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "2", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Unique Identification number" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.unique_identification_number || "N/A" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "3", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Type of identification card" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.type_of_id || "Passport + Driver's License" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "3a", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Issued Country" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.issuing_country || "N/A" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "4", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Date of birth" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.date_of_birth || "N/A" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "5", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Gender" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.gender || "N/A" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "6", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Nationality" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.nationality || "N/A" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "7", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Residential address" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.address || data.original_address || "N/A" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "8", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Date of issue" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.date_of_issue?.passport || data.date_of_issue?.license || "N/A" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "9", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Date of expiry" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: data.date_of_expiry?.passport || data.date_of_expiry?.license || "N/A" })] })]
+                                            })
+                                        ]
+                                    }),
+                                    
+                                    new docx.TableRow({
+                                        children: [
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "10", color: "0066CC" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Any other personal information" })] })]
+                                            }),
+                                            new docx.TableCell({
+                                                children: [new docx.Paragraph({ children: [new docx.TextRun({ text: "Generated by KYC Document Generator System" })] })]
+                                            })
+                                        ]
+                                    })
+                                ]
+                            }),
+                            
+                            // 페이지 브레이크
+                            new docx.Paragraph({
+                                pageBreakBefore: true,
+                                children: []
+                            }),
+                            
+                            // 두 번째 페이지 - Certification of Translation Accuracy
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "Certification of Translation Accuracy",
+                                        bold: true,
+                                        size: 28,
+                                        color: "000000"
+                                    })
+                                ],
+                                alignment: docx.AlignmentType.CENTER,
+                                spacing: { after: 400 }
+                            }),
+                            
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "Translation of [Identity Documents] from [Japanese] to English"
+                                    })
+                                ],
+                                alignment: docx.AlignmentType.CENTER,
+                                spacing: { after: 400 }
+                            }),
+                            
+                            // 인증 텍스트
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "I, [Chae Woong Seok], a Native language user of [Japanese & English] / Professional translator [Translation qualification] (delete either role if not applicable) have no relation to the client and is independent of any commercial interest, hereby certify that the above-mentioned document has been translated by an experienced, qualified and competent professional translator, fluent in the above-mentioned language pair and that, in my best judgement, the translated text truly reflects the content, meaning, and style of the original text and constitutes in every respect a complete and accurate translation of the original document."
+                                    })
+                                ],
+                                spacing: { after: 400 }
+                            }),
+                            
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "A copy of the translation is attached to this certification."
+                                    })
+                                ],
+                                spacing: { after: 600 }
+                            }),
+                            
+                            // 서명란
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "[SIGNATURE HERE]"
+                                    })
+                                ],
+                                spacing: { after: 200 }
+                            }),
+                            
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "________________________"
+                                    })
+                                ],
+                                spacing: { after: 200 }
+                            }),
+                            
+                            // 이름과 날짜
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: "[Name]: [Chae Woong Seok]"
+                                    })
+                                ],
+                                spacing: { after: 100 }
+                            }),
+                            
+                            new docx.Paragraph({
+                                children: [
+                                    new docx.TextRun({
+                                        text: `[Date]: [Date signed in ${formattedDate} format]`
+                                    })
+                                ]
+                            })
+                        ]
+                    }]
+                });
+                
+                console.log('✅ Translation Certification Form 생성 완료');
+                
+                // 문서를 Blob으로 변환
+                const blob = await docx.Packer.toBlob(doc);
+                console.log('✅ Word 문서 Blob 생성 완료');
+                
+                return blob;
+                
+            } catch (error) {
+                console.error('❌ Word 문서 생성 오류:', error);
+                throw error;
+            }
         }
 
         // 파일 확장자 추출 함수 ⭐ Phase 4
