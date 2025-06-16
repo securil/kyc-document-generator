@@ -100,17 +100,22 @@ git push origin gh-pages
 
 ## 📈 **개발 일정**
 
+### Phase 5 완료 (2025-06-16)
+- ✅ **Translation Certification Form**: 전문적인 번역 인증서 생성
+- ✅ **주소 자동 번역**: 일본어→영어 Google Translate API 연동
+- ✅ **Word 문서 품질 개선**: 실제 .docx 파일 생성
+- ✅ **고유 번호 공란 처리**: SMB 정책 대응
+
 ### Phase 4 완료 (2025-06-16)
 - ✅ 셀피 업로드 기능
 - ✅ ZIP 파일 생성 시스템
 - ✅ 6단계 워크플로우
 - ✅ GitHub Pages 배포 (main + gh-pages 브랜치)
 
-### Phase 5 예정
-- Word 문서 품질 개선
-- 데이터 추출 정확도 향상
-- 모바일 최적화
-- 다국어 UI 지원
+### 향후 계획
+- 🔧 교차 검증 알고리즘 개선
+- 🔧 모바일 반응형 최적화
+- 🔧 다국가 신분증 지원 확장
 
 ## 👨‍💻 **개발자**
 
@@ -127,11 +132,12 @@ git push origin gh-pages
 
 ## 🔄 **배포 히스토리**
 
+- **v2.1 (2025-06-16)**: Phase 5 완성 - Translation Certification Form
 - **v2.0 (2025-06-16)**: Phase 4 완성 - 셀피 + ZIP 기능
 - **v1.5 (2025-06-14)**: Phase 3 완성 - Word 문서 생성
 - **v1.0 (2025-06-03)**: 기본 기능 완성 - 다중 문서 처리
 
 ---
 
-*KYC Document Generator v2.0 - Development Branch*  
+*KYC Document Generator v2.1 Phase 5 - Development Branch*  
 *Last updated: 2025-06-16*
