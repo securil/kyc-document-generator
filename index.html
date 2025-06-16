@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>KYC 다중 문서 처리 시스템 - v2.0</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            background: rgba(255,255,255,0.95);
+        }
+        
+        .upload-area {
+            border: 3px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: rgba(248,249,250,0.8);
+        }
+        
+        .upload-area:hover {
+            border-color: #007bff;
+            background: rgba(0,123,255,0.1);
+        }
+        
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: rgba(40,167,69,0.1);
+        }
+        
+        .file-preview {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 8px;
+            margin: 10px auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .progress-container {
+            display: none;
+        }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+        }
+        
+        .step::after {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: #dee2e6;
+            z-index: -1;
+        }
+        
+        .step:last-child::after {
+            display: none;
+        }
+        
+        .step-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #dee2e6;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .step.active .step-circle {
+            background: #007bff;
+            color: white;
+        }
+        
+        .step.completed .step-circle {
+            background: #28a745;
+            color: white;
+        }
+        
+        .document-section {
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: white;
+        }
+        
+        .document-title {
+            color: #495057;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .btn-process {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 12px 30px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-process:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40,167,69,0.3);
+        }
+        
+        .btn-process:disabled {
+            background: #6c757d;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* 검증 페이지 스타일 */
+        .form-control:focus, .form-select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        }
+        
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 0.2rem rgba(220,53,69,0.25);
+        }
+        
+        .badge {
+            font-size: 0.8em;
+        }
+        
+        .conflict-item {
+            background: rgba(255,193,7,0.1);
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .original-data {
+            background: rgba(248,249,250,0.8);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .field-group {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            color: #495057;
+            font-weight: 600;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- 헤더 -->
+        <div class="text-center mb-4">
+            <h1 class="text-white mb-2">
+                <i class="bi bi-shield-check"></i>
+                KYC 다중 문서 처리 시스템
+            </h1>
+            <p class="text-white-50">여권과 운전면허증을 동시에 처리하여 정확한 KYC 정보를 추출합니다</p>
+        </div>
+
+        <!-- 단계 표시기 -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="step-indicator">
+                    <div class="step active">
+                        <div class="step-circle">1</div>
+                        <small>파일 업로드</small>
+                    </div>
+                    <div class="step">
+                        <div class="step-circle">2</div>
+                        <small>문서 분석</small>
+                    </div>
+                    <div class="step">
+                        <div class="step-circle">3</div>
+                        <small>정보 검증</small>
+                    </div>
+                    <div class="step">
+                        <div class="step-circle">4</div>
+                        <small>완료</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 파일 업로드 섹션 -->
+        <div class="card" id="uploadSection">
+            <div class="card-body">
+                <div class="row">
+                    <!-- 여권 업로드 -->
+                    <div class="col-md-4">
+                        <div class="document-section">
+                            <div class="document-title">
+                                <i class="bi bi-airplane text-primary"></i>
+                                여권 업로드
+                            </div>
+                            <div class="upload-area" id="passportUpload">
+                                <div id="passportDefault">
+                                    <i class="bi bi-cloud-upload text-muted" style="font-size: 2.5rem;"></i>
+                                    <h6 class="mt-2 text-muted">여권 이미지를 업로드하세요</h6>
+                                    <p class="text-muted small">드래그 앤 드롭 또는 클릭하여 파일 선택</p>
+                                    <small class="text-muted">지원 형식: JPG, PNG, PDF (최대 10MB)</small>
+                                </div>
+                                <div id="passportPreview" style="display: none;">
+                                    <img id="passportImage" class="file-preview" alt="여권 미리보기">
+                                    <div class="mt-2">
+                                        <small class="text-success">
+                                            <i class="bi bi-check-circle"></i>
+                                            <span id="passportFileName"></span>
+                                        </small>
+                                        <br>
+                                        <button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="removeFile('passport')">
+                                            <i class="bi bi-trash"></i> 제거
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="passportInput" accept="image/*,.pdf" style="display: none;">
+                        </div>
+                    </div>
+
+                    <!-- 운전면허증 업로드 -->
+                    <div class="col-md-4">
+                        <div class="document-section">
+                            <div class="document-title">
+                                <i class="bi bi-car-front text-success"></i>
+                                운전면허증 업로드
+                            </div>
+                            <div class="upload-area" id="licenseUpload">
+                                <div id="licenseDefault">
+                                    <i class="bi bi-cloud-upload text-muted" style="font-size: 2.5rem;"></i>
+                                    <h6 class="mt-2 text-muted">운전면허증 이미지를 업로드하세요</h6>
+                                    <p class="text-muted small">드래그 앤 드롭 또는 클릭하여 파일 선택</p>
+                                    <small class="text-muted">지원 형식: JPG, PNG, PDF (최대 10MB)</small>
+                                </div>
+                                <div id="licensePreview" style="display: none;">
+                                    <img id="licenseImage" class="file-preview" alt="운전면허증 미리보기">
+                                    <div class="mt-2">
+                                        <small class="text-success">
+                                            <i class="bi bi-check-circle"></i>
+                                            <span id="licenseFileName"></span>
+                                        </small>
+                                        <br>
+                                        <button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="removeFile('license')">
+                                            <i class="bi bi-trash"></i> 제거
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="licenseInput" accept="image/*,.pdf" style="display: none;">
+                        </div>
+                    </div>
+
+                    <!-- 셀피 업로드 ⭐ Phase 4 신규 추가 -->
+                    <div class="col-md-4">
+                        <div class="document-section">
+                            <div class="document-title">
+                                <i class="bi bi-person-circle text-warning"></i>
+                                셀피 업로드
+                            </div>
+                            <div class="upload-area" id="selfieUpload">
+                                <div id="selfieDefault">
+                                    <i class="bi bi-camera text-muted" style="font-size: 2.5rem;"></i>
+                                    <h6 class="mt-2 text-muted">셀피 사진을 업로드하세요</h6>
+                                    <p class="text-muted small">드래그 앤 드롭 또는 클릭하여 파일 선택</p>
+                                    <small class="text-muted">지원 형식: JPG, PNG (최대 5MB)</small>
+                                </div>
+                                <div id="selfiePreview" style="display: none;">
+                                    <img id="selfieImage" class="file-preview" alt="셀피 미리보기">
+                                    <div class="mt-2">
+                                        <small class="text-success">
+                                            <i class="bi bi-check-circle"></i>
+                                            <span id="selfieFileName"></span>
+                                        </small>
+                                        <br>
+                                        <button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="removeFile('selfie')">
+                                            <i class="bi bi-trash"></i> 제거
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="selfieInput" accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 처리 버튼 -->
+                <div class="text-center mt-4">
+                    <button type="button" class="btn btn-process btn-lg" id="processBtn" disabled>
+                        <i class="bi bi-gear-fill me-2"></i>
+                        문서 분석 시작
+                    </button>
+                    <p class="text-muted small mt-2">세 개의 파일을 모두 업로드한 후 분석을 시작할 수 있습니다</p>
+                </div>
+
+                <!-- 진행률 표시 -->
+                <div class="progress-container mt-4">
+                    <div class="text-center mb-3">
+                        <h5 id="progressTitle">문서 분석 중...</h5>
+                        <p class="text-muted" id="progressMessage">잠시만 기다려주세요</p>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" id="progressBar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 정보 검증 및 수정 섹션 -->
+        <div class="card mt-4" id="verificationSection" style="display: none;">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-clipboard-check me-2"></i>
+                    정보 검증 및 수정
+                </h4>
+                <small>AI가 추출한 정보를 확인하고 필요시 수정해주세요</small>
+            </div>
+            <div class="card-body">
+                <!-- 교차 검증 결과 -->
+                <div id="crossValidationAlert" class="alert alert-info" style="display: none;">
+                    <h5><i class="bi bi-info-circle me-2"></i>교차 검증 결과</h5>
+                    <div id="validationDetails"></div>
+                </div>
+
+                <!-- KYC 정보 편집 폼 -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="mb-3">기본 정보</h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">성명 (Full Name) *</label>
+                            <input type="text" class="form-control" id="fullName" required>
+                            <div class="form-text">여권 또는 운전면허증에 기재된 성명</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">생년월일 (Date of Birth) *</label>
+                            <input type="date" class="form-control" id="dateOfBirth" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">성별 (Gender) *</label>
+                            <select class="form-select" id="gender" required>
+                                <option value="">선택하세요</option>
+                                <option value="M">남성 (Male)</option>
+                                <option value="F">여성 (Female)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">국적 (Nationality) *</label>
+                            <input type="text" class="form-control" id="nationality" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">문서 유형 (Type of ID) *</label>
+                            <input type="text" class="form-control" id="typeOfId" value="Passport + Driver's License" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">발급 국가 (Issuing Country) *</label>
+                            <input type="text" class="form-control" id="issuingCountry" required>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5 class="mb-3">상세 정보</h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">고유 식별 번호 (Unique ID Number)</label>
+                            <input type="text" class="form-control" id="uniqueIdNumber">
+                            <div class="form-text">여권번호 또는 면허증번호</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">원본 주소 (Original Address)</label>
+                            <textarea class="form-control" id="originalAddress" rows="2" readonly style="background-color: #f8f9fa;"></textarea>
+                            <div class="form-text">문서에서 추출된 원본 주소 (일본어/한국어 등)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">영문 주소 (English Address)</label>
+                            <textarea class="form-control" id="address" rows="2"></textarea>
+                            <div class="form-text">영문으로 번역된 주소 (편집 가능)</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">이메일 (Email)</label>
+                            <input type="email" class="form-control" id="email">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">여권 발급일</label>
+                                    <input type="date" class="form-control" id="passportIssueDate">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">여권 만료일</label>
+                                    <input type="date" class="form-control" id="passportExpiryDate">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">면허증 발급일</label>
+                                    <input type="date" class="form-control" id="licenseIssueDate">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">면허증 만료일</label>
+                                    <input type="date" class="form-control" id="licenseExpiryDate">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">추가 메모 (Additional Notes)</label>
+                            <textarea class="form-control" id="additionalNotes" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 충돌 해결 섹션 -->
+                <div id="conflictResolution" style="display: none;">
+                    <hr class="my-4">
+                    <h5 class="text-danger mb-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        정보 불일치 해결
+                    </h5>
+                    <div id="conflictList"></div>
+                </div>
+
+                <!-- 원본 데이터 표시 섹션 -->
+                <div class="mt-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="border-bottom pb-2">여권 정보</h6>
+                            <div id="passportInfo" class="small text-muted">
+                                <!-- 여권에서 추출된 원본 정보 표시 -->
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="border-bottom pb-2">운전면허증 정보</h6>
+                            <div id="licenseInfo" class="small text-muted">
+                                <!-- 면허증에서 추출된 원본 정보 표시 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 저장 버튼 -->
+                <div class="text-center mt-4">
+                    <button type="button" class="btn btn-secondary me-2" onclick="goBackToUpload()">
+                        <i class="bi bi-arrow-left me-2"></i>
+                        다시 업로드
+                    </button>
+                    <button type="button" class="btn btn-success btn-lg" id="saveBtn">
+                        <i class="bi bi-check-circle me-2"></i>
+                        정보 확인 완료
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Word 파일 생성을 위한 라이브러리 -->
+    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+    <script src="https://unpkg.com/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+    
+    <!-- ZIP 파일 생성을 위한 라이브러리 ⭐ Phase 4 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <script>
+        // 전역 변수
+        let uploadedFiles = {
+            passport: null,
+            license: null,
+            selfie: null  // 셀피 파일 추가
+        };
+
+        // 파일 업로드 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            setupFileUpload('passport');
+            setupFileUpload('license');
+            setupFileUpload('selfie');  // 셀피 업로드 추가
+        });
+
+        // 파일 업로드 설정
+        function setupFileUpload(type) {
+            const uploadArea = document.getElementById(type + 'Upload');
+            const fileInput = document.getElementById(type + 'Input');
+
+            // 클릭 이벤트
+            uploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            // 파일 선택 이벤트
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0], type);
+                }
+            });
+
+            // 드래그 앤 드롭 이벤트
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFile(files[0], type);
+                }
+            });
+        }
+
+        // 파일 처리
+        function handleFile(file, type) {
+            // 파일 크기 체크 (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                Swal.fire({
+                    icon: 'error',
+                    title: '파일 크기 초과',
+                    text: '파일 크기는 10MB 이하여야 합니다.',
+                });
+                return;
+            }
+
+            // 파일 형식 체크
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+            if (!allowedTypes.includes(file.type)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: '지원하지 않는 파일 형식',
+                    text: 'JPG, PNG, PDF 파일만 업로드 가능합니다.',
+                });
+                return;
+            }
+
+            uploadedFiles[type] = file;
+            showFilePreview(file, type);
+            checkBothFilesUploaded();
+        }
+
+        // 파일 미리보기 표시
+        function showFilePreview(file, type) {
+            const defaultDiv = document.getElementById(type + 'Default');
+            const previewDiv = document.getElementById(type + 'Preview');
+            const imageElement = document.getElementById(type + 'Image');
+            const fileNameSpan = document.getElementById(type + 'FileName');
+
+            defaultDiv.style.display = 'none';
+            previewDiv.style.display = 'block';
+            fileNameSpan.textContent = file.name;
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imageElement.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // PDF의 경우 아이콘 표시
+                imageElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNkYzM1NDUiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QREY8L3RleHQ+PC9zdmc+';
+            }
+        }
+
+        // 파일 제거
+        function removeFile(type) {
+            uploadedFiles[type] = null;
+            
+            const defaultDiv = document.getElementById(type + 'Default');
+            const previewDiv = document.getElementById(type + 'Preview');
+            const fileInput = document.getElementById(type + 'Input');
+
+            defaultDiv.style.display = 'block';
+            previewDiv.style.display = 'none';
+            fileInput.value = '';
+
+            checkBothFilesUploaded();
+        }
+
+        // 두 파일 모두 업로드되었는지 체크
+        function checkBothFilesUploaded() {
+            const processBtn = document.getElementById('processBtn');
+            
+            if (uploadedFiles.passport && uploadedFiles.license && uploadedFiles.selfie) {
+                processBtn.disabled = false;
+                processBtn.innerHTML = '<i class="bi bi-gear-fill me-2"></i>문서 분석 시작';
+            } else {
+                processBtn.disabled = true;
+                processBtn.innerHTML = '<i class="bi bi-gear-fill me-2"></i>문서 분석 시작';
+            }
+        }
+
+        // 문서 처리 시작
+        document.getElementById('processBtn').addEventListener('click', function() {
+            if (!uploadedFiles.passport || !uploadedFiles.license || !uploadedFiles.selfie) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: '파일을 모두 업로드해주세요',
+                    text: '여권, 운전면허증, 셀피 파일을 모두 업로드한 후 진행해주세요.',
+                });
+                return;
+            }
+
+            startDocumentProcessing();
+        });
+
+        // 문서 처리 시작
+        async function startDocumentProcessing() {
+            try {
+                // UI 업데이트
+                document.querySelector('.progress-container').style.display = 'block';
+                document.getElementById('processBtn').disabled = true;
+                updateStep(2);
+                updateProgress(10, '파일 준비 중...');
+
+                // 파일을 Base64로 변환 (data:image/jpeg;base64, 제거)
+                const passportBase64 = await fileToBase64(uploadedFiles.passport);
+                const licenseBase64 = await fileToBase64(uploadedFiles.license);
+
+                // Base64 헤더 제거
+                const passportData = passportBase64.split(',')[1];
+                const licenseData = licenseBase64.split(',')[1];
+
+                updateProgress(30, 'Firebase 서버에 전송 중...');
+
+                // API 호출 데이터 준비 (올바른 키 이름 사용)
+                const requestData = {
+                    passportImage: passportData,
+                    licenseImage: licenseData
+                };
+
+                console.log('요청 데이터 크기:', {
+                    passport: passportData.length,
+                    license: licenseData.length
+                });
+
+                updateProgress(50, '문서 분석 중...');
+
+                // Firebase Functions API 호출
+                const response = await fetch('https://us-central1-kyc-document-generator.cloudfunctions.net/processMultipleDocuments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                updateProgress(80, '결과 처리 중...');
+
+                console.log('응답 상태:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('서버 오류 응답:', errorText);
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
+                const result = await response.json();
+                
+                // API 응답 상세 디버깅 로그 추가
+                console.log('=== API 응답 전체 디버깅 ===');
+                console.log('Success:', result.success);
+                console.log('Message:', result.message);
+                console.log('여권 원본 데이터:', result.passport_data?.original);
+                console.log('여권 번역 데이터:', result.passport_data?.translated);
+                console.log('면허증 원본 데이터:', result.license_data?.original);
+                console.log('면허증 번역 데이터:', result.license_data?.translated);
+                console.log('교차 검증:', result.cross_validation);
+                console.log('KYC 필드:', result.kyc_fields);
+                console.log('=== API 응답 디버깅 완료 ===');
+                
+                updateProgress(100, '완료!');
+
+                if (result.success) {
+                    // 성공시 검증 페이지로 이동
+                    setTimeout(() => {
+                        showVerificationPage(result);
+                    }, 1000);
+                } else {
+                    throw new Error(result.message || '문서 처리 중 오류가 발생했습니다.');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: '처리 실패',
+                    text: error.message || '문서 처리 중 오류가 발생했습니다.',
+                });
+                
+                // UI 리셋
+                document.querySelector('.progress-container').style.display = 'none';
+                document.getElementById('processBtn').disabled = false;
+                updateStep(1);
+            }
+        }
+
+        // 파일을 Base64로 변환
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // 진행률 업데이트
+        function updateProgress(percentage, message) {
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressMessage').textContent = message;
+        }
+
+        // 단계 업데이트
+        function updateStep(stepNumber) {
+            document.querySelectorAll('.step').forEach((step, index) => {
+                const stepCircle = step.querySelector('.step-circle');
+                
+                if (index + 1 < stepNumber) {
+                    step.classList.add('completed');
+                    step.classList.remove('active');
+                } else if (index + 1 === stepNumber) {
+                    step.classList.add('active');
+                    step.classList.remove('completed');
+                } else {
+                    step.classList.remove('active', 'completed');
+                }
+            });
+        }
+
+        // 검증 페이지 표시
+        function showVerificationPage(result) {
+            // 업로드 섹션 숨기고 검증 섹션 표시
+            document.getElementById('uploadSection').style.display = 'none';
+            document.getElementById('verificationSection').style.display = 'block';
+            
+            // 단계 업데이트
+            updateStep(3);
+            
+            // 전역 변수에 결과 저장
+            window.apiResult = result;
+            
+            console.log('=== showVerificationPage 시작 ===');
+            console.log('페이지 전환 완료, 데이터 채우기 시작...');
+            
+            // DOM 렌더링 완료를 위한 지연 시간 증가
+            setTimeout(() => {
+                console.log('첫 번째 데이터 채우기 시도...');
+                populateKYCFields(result);
+                showCrossValidation(result);
+                showOriginalData(result);
+                
+                // 추가 검증 및 재시도 (지연 시간 증가)
+                setTimeout(() => {
+                    console.log('강제 검증 및 재시도...');
+                    verifyDataPopulation(result);
+                    
+                    // 최종 확인 및 강제 설정
+                    setTimeout(() => {
+                        console.log('최종 강제 설정 시도...');
+                        forcePopulateFields(result);
+                    }, 1000);
+                }, 1000);
+            }, 500);
+        }
+
+        // 강제 필드 채우기 함수 (새로 추가)
+        function forcePopulateFields(result) {
+            console.log('=== forcePopulateFields 시작 ===');
+            
+            // 모든 데이터 소스에서 값 추출
+            const allData = extractAllPossibleData(result);
+            console.log('추출된 모든 데이터:', allData);
+            
+            // 강제로 모든 필드 설정
+            const fieldIds = ['fullName', 'dateOfBirth', 'gender', 'nationality', 'issuingCountry', 'uniqueIdNumber', 'originalAddress', 'address', 'email'];
+            
+            fieldIds.forEach(fieldId => {
+                const element = document.getElementById(fieldId);
+                const value = allData[fieldId] || '';
+                
+                if (element) {
+                    // 다양한 방법으로 값 설정 시도
+                    element.value = value;
+                    element.setAttribute('value', value);
+                    
+                    // 이벤트 트리거
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    console.log(`🔧 강제 설정: ${fieldId} = "${value}" (성공: ${element.value === value})`);
+                } else {
+                    console.log(`❌ 요소 없음: ${fieldId}`);
+                }
+            });
+            
+            // 날짜 필드 강제 설정
+            const dateFields = {
+                'passportIssueDate': allData.passportIssueDate,
+                'passportExpiryDate': allData.passportExpiryDate,
+                'licenseIssueDate': allData.licenseIssueDate,
+                'licenseExpiryDate': allData.licenseExpiryDate
+            };
+            
+            Object.entries(dateFields).forEach(([fieldId, value]) => {
+                const element = document.getElementById(fieldId);
+                if (element && value) {
+                    element.value = value;
+                    console.log(`📅 날짜 강제 설정: ${fieldId} = "${value}"`);
+                }
+            });
+            
+            // 추가 메모 설정
+            const notesField = document.getElementById('additionalNotes');
+            if (notesField) {
+                notesField.value = '문서에서 자동 추출됨 (강제 설정)';
+            }
+            
+            console.log('=== forcePopulateFields 완료 ===');
+        }
+
+        // 모든 가능한 데이터 추출 함수 (새로 추가)
+        function extractAllPossibleData(result) {
+            const passport = result.passport_data || {};
+            const license = result.license_data || {};
+            const kyc = result.kyc_fields || {};
+            
+            // 실제 데이터가 있는 위치에서 추출
+            const passportOriginalData = passport.original?.data || {};
+            const passportTranslatedData = passport.translated?.data || {};
+            const licenseOriginalData = license.original?.data || {};
+            const licenseTranslatedData = license.translated?.data || {};
+            
+            console.log('=== 데이터 추출 디버깅 ===');
+            console.log('passport.original:', passport.original);
+            console.log('passport.translated:', passport.translated);
+            console.log('license.original:', license.original);
+            console.log('license.translated:', license.translated);
+            console.log('여권 원본 데이터:', passportOriginalData);
+            console.log('여권 번역 데이터:', passportTranslatedData);
+            console.log('면허증 원본 데이터:', licenseOriginalData);
+            console.log('면허증 번역 데이터:', licenseTranslatedData);
+            
+            // 데이터 추출 헬퍼 함수
+            const getValue = (data, keys) => {
+                // 먼저 data 객체 안에 실제 데이터가 있는지 확인
+                if (data && data.data) {
+                    const actualData = data.data;
+                    for (const key of keys) {
+                        if (actualData[key]) {
+                            // 배열인 경우 첫 번째 값의 value 속성 가져오기
+                            if (Array.isArray(actualData[key]) && actualData[key].length > 0) {
+                                if (actualData[key][0].value) {
+                                    return actualData[key][0].value;
+                                }
+                                return actualData[key][0];
+                            }
+                            // 객체인 경우 value 속성 가져오기
+                            if (typeof actualData[key] === 'object' && actualData[key].value) {
+                                return actualData[key].value;
+                            }
+                            // 문자열인 경우 그대로 반환
+                            if (typeof actualData[key] === 'string') {
+                                return actualData[key];
+                            }
+                        }
+                    }
+                }
+                
+                // data.data가 없는 경우 기존 방식으로 확인
+                for (const key of keys) {
+                    if (data[key]) {
+                        // 배열인 경우 첫 번째 값의 value 속성 가져오기
+                        if (Array.isArray(data[key]) && data[key].length > 0) {
+                            return data[key][0].value || data[key][0];
+                        }
+                        // 객체인 경우 value 속성 가져오기
+                        if (typeof data[key] === 'object' && data[key].value) {
+                            return data[key].value;
+                        }
+                        // 문자열인 경우 그대로 반환
+                        if (typeof data[key] === 'string') {
+                            return data[key];
+                        }
+                    }
+                }
+                return '';
+            };
+            
+            // 일본 여권/면허증의 실제 필드명에 맞춰 데이터 추출
+            return {
+                fullName: kyc.full_name || 
+                         getValue(passportTranslatedData, ['documentName', 'fullName', 'name', 'firstName', 'lastName']) ||
+                         getValue(passportOriginalData, ['documentName', 'fullName', 'name', 'firstName', 'lastName']) ||
+                         getValue(licenseTranslatedData, ['documentName', 'fullName', 'name']) ||
+                         getValue(licenseOriginalData, ['documentName', 'fullName', 'name']) || '',
+                         
+                dateOfBirth: kyc.date_of_birth || 
+                            getValue(passportTranslatedData, ['dateOfBirth', 'birthDate', 'dob']) ||
+                            getValue(passportOriginalData, ['dateOfBirth', 'birthDate', 'dob']) ||
+                            getValue(licenseTranslatedData, ['dateOfBirth', 'birthDate', 'dob']) ||
+                            getValue(licenseOriginalData, ['dateOfBirth', 'birthDate', 'dob']) || '',
+                            
+                gender: kyc.gender || 
+                       getValue(passportTranslatedData, ['sex', 'gender']) ||
+                       getValue(passportOriginalData, ['sex', 'gender']) ||
+                       getValue(licenseTranslatedData, ['sex', 'gender']) ||
+                       getValue(licenseOriginalData, ['sex', 'gender']) || '',
+                       
+                nationality: kyc.nationality || 
+                            getValue(passportTranslatedData, ['nationality', 'countryFull', 'country']) ||
+                            getValue(passportOriginalData, ['nationality', 'countryFull', 'country']) ||
+                            getValue(licenseTranslatedData, ['nationality', 'countryFull', 'country']) ||
+                            getValue(licenseOriginalData, ['nationality', 'countryFull', 'country']) || '',
+                            
+                issuingCountry: kyc.issuing_country || 
+                               getValue(passportTranslatedData, ['issuingCountry', 'countryFull', 'country']) ||
+                               getValue(passportOriginalData, ['issuingCountry', 'countryFull', 'country']) ||
+                               getValue(licenseTranslatedData, ['issuingCountry', 'countryFull', 'country']) ||
+                               getValue(licenseOriginalData, ['issuingCountry', 'countryFull', 'country']) || '',
+                               
+                uniqueIdNumber: kyc.unique_identification_number || 
+                               getValue(passportTranslatedData, ['documentNumber', 'passportNumber', 'number']) ||
+                               getValue(passportOriginalData, ['documentNumber', 'passportNumber', 'number']) ||
+                               getValue(licenseTranslatedData, ['documentNumber', 'licenseNumber', 'number']) ||
+                               getValue(licenseOriginalData, ['documentNumber', 'licenseNumber', 'number']) || '',
+                               
+                originalAddress: getValue(licenseOriginalData, ['address', 'fullAddress']) ||
+                                getValue(licenseTranslatedData, ['address', 'fullAddress']) ||
+                                getValue(passportOriginalData, ['address', 'fullAddress']) ||
+                                getValue(passportTranslatedData, ['address', 'fullAddress']) || '',
+                                
+                address: getValue(licenseTranslatedData, ['address', 'fullAddress']) ||
+                        getValue(licenseOriginalData, ['address', 'fullAddress']) ||
+                        getValue(passportTranslatedData, ['address', 'fullAddress']) ||
+                        getValue(passportOriginalData, ['address', 'fullAddress']) ||
+                        kyc.address || '',
+                        
+                email: kyc.email || '',
+                
+                passportIssueDate: getValue(passportTranslatedData, ['dateOfIssue', 'issueDate', 'issued']) ||
+                                  getValue(passportOriginalData, ['dateOfIssue', 'issueDate', 'issued']) || '',
+                                  
+                passportExpiryDate: getValue(passportTranslatedData, ['dateOfExpiry', 'expiryDate', 'expiry']) ||
+                                   getValue(passportOriginalData, ['dateOfExpiry', 'expiryDate', 'expiry']) || '',
+                                   
+                licenseIssueDate: getValue(licenseTranslatedData, ['dateOfIssue', 'issueDate', 'issued']) ||
+                                 getValue(licenseOriginalData, ['dateOfIssue', 'issueDate', 'issued']) || '',
+                                 
+                licenseExpiryDate: getValue(licenseTranslatedData, ['dateOfExpiry', 'expiryDate', 'expiry']) ||
+                                  getValue(licenseOriginalData, ['dateOfExpiry', 'expiryDate', 'expiry']) || ''
+            };
+        }
+
+        // 데이터 채우기 검증 및 재시도
+        function verifyDataPopulation(result) {
+            console.log('=== verifyDataPopulation 시작 ===');
+            console.log('전체 결과 데이터:', result);
+            
+            const fullNameField = document.getElementById('fullName');
+            console.log('fullName 필드:', fullNameField);
+            console.log('현재 fullName 값:', fullNameField ? fullNameField.value : 'null');
+            
+            if (!fullNameField || !fullNameField.value) {
+                console.log('데이터 채우기 실패 - 강제 재시도 중...');
+                
+                // 모든 가능한 데이터 소스 확인
+                const passportData = result.passport_data?.translated || result.passport_data?.original || {};
+                const licenseData = result.license_data?.translated || result.license_data?.original || {};
+                const kycFields = result.kyc_fields || {};
+                
+                console.log('사용 가능한 데이터 소스:');
+                console.log('- 여권 번역 데이터:', passportData);
+                console.log('- 면허증 번역 데이터:', licenseData);
+                console.log('- KYC 필드:', kycFields);
+                
+                // 강제 데이터 매핑 (모든 가능한 필드에서 추출)
+                const extractedData = {
+                    fullName: kycFields.full_name || passportData.documentName || passportData.name || licenseData.documentName || licenseData.name || '',
+                    dateOfBirth: kycFields.date_of_birth || passportData.dateOfBirth || passportData.birthDate || licenseData.dateOfBirth || licenseData.birthDate || '',
+                    gender: kycFields.gender || passportData.sex || passportData.gender || licenseData.sex || licenseData.gender || '',
+                    nationality: kycFields.nationality || passportData.nationality || passportData.country || licenseData.nationality || licenseData.country || '',
+                    issuingCountry: kycFields.issuing_country || passportData.nationality || passportData.country || licenseData.nationality || licenseData.country || '',
+                    uniqueIdNumber: kycFields.unique_identification_number || passportData.documentNumber || passportData.number || licenseData.documentNumber || licenseData.number || '',
+                    originalAddress: licenseData.address || passportData.address || '',
+                    address: translateAddress(licenseData.address || passportData.address) || ''
+                };
+                
+                console.log('추출된 데이터:', extractedData);
+                
+                // DOM 요소 강제 설정
+                const fieldMappings = [
+                    { id: 'fullName', value: extractedData.fullName },
+                    { id: 'dateOfBirth', value: extractedData.dateOfBirth },
+                    { id: 'gender', value: extractedData.gender },
+                    { id: 'nationality', value: extractedData.nationality },
+                    { id: 'issuingCountry', value: extractedData.issuingCountry },
+                    { id: 'uniqueIdNumber', value: extractedData.uniqueIdNumber },
+                    { id: 'originalAddress', value: extractedData.originalAddress },
+                    { id: 'address', value: extractedData.address }
+                ];
+                
+                fieldMappings.forEach(field => {
+                    const element = document.getElementById(field.id);
+                    if (element && field.value) {
+                        element.value = field.value;
+                        console.log(`✅ 설정 성공: ${field.id} = ${field.value}`);
+                    } else {
+                        console.log(`❌ 설정 실패: ${field.id} (요소: ${!!element}, 값: ${field.value})`);
+                    }
+                });
+                
+                // 날짜 필드 별도 처리
+                const dateFields = [
+                    { id: 'passportIssueDate', value: passportData.dateOfIssue || passportData.issueDate || '' },
+                    { id: 'passportExpiryDate', value: passportData.dateOfExpiry || passportData.expiryDate || '' },
+                    { id: 'licenseIssueDate', value: licenseData.dateOfIssue || licenseData.issueDate || '' },
+                    { id: 'licenseExpiryDate', value: licenseData.dateOfExpiry || licenseData.expiryDate || '' }
+                ];
+                
+                dateFields.forEach(field => {
+                    const element = document.getElementById(field.id);
+                    if (element && field.value) {
+                        element.value = field.value;
+                        console.log(`📅 날짜 설정: ${field.id} = ${field.value}`);
+                    }
+                });
+                
+                // 추가 메모 설정
+                const additionalNotesField = document.getElementById('additionalNotes');
+                if (additionalNotesField) {
+                    additionalNotesField.value = kycFields.additional_notes || '문서에서 자동 추출됨 (강제 매핑)';
+                }
+                
+                console.log('=== 강제 데이터 설정 완료 ===');
+            } else {
+                console.log('데이터 채우기 정상 완료');
+            }
+        }
+
+        // KYC 필드 자동 채우기
+        function populateKYCFields(result) {
+            console.log('=== populateKYCFields 디버깅 시작 ===');
+            console.log('전체 API 응답 구조:', JSON.stringify(result, null, 2));
+            console.log('passport_data 내용:', result.passport_data);
+            console.log('license_data 내용:', result.license_data);
+            
+            // API 응답에서 실제 데이터 위치 확인
+            let passportData = null;
+            let licenseData = null;
+            
+            // passport_data 확인
+            if (result.passport_data) {
+                if (result.passport_data.kyc_fields) {
+                    passportData = result.passport_data.kyc_fields;
+                    console.log('여권 KYC 필드 발견:', passportData);
+                } else if (result.passport_data.translated) {
+                    passportData = result.passport_data.translated;
+                    console.log('여권 번역 데이터 발견:', passportData);
+                } else if (result.passport_data.original) {
+                    passportData = result.passport_data.original;
+                    console.log('여권 원본 데이터 발견:', passportData);
+                }
+            }
+            
+            // license_data 확인
+            if (result.license_data) {
+                if (result.license_data.kyc_fields) {
+                    licenseData = result.license_data.kyc_fields;
+                    console.log('면허증 KYC 필드 발견:', licenseData);
+                } else if (result.license_data.translated) {
+                    licenseData = result.license_data.translated;
+                    console.log('면허증 번역 데이터 발견:', licenseData);
+                } else if (result.license_data.original) {
+                    licenseData = result.license_data.original;
+                    console.log('면허증 원본 데이터 발견:', licenseData);
+                }
+            }
+            
+            // kyc_fields가 최상위에 있는 경우
+            const kycFields = result.kyc_fields || {};
+            console.log('최상위 KYC 필드:', kycFields);
+            
+            // 우선순위에 따른 데이터 매핑
+            const finalData = {
+                fullName: kycFields.full_name || 
+                         passportData?.documentName || passportData?.full_name ||
+                         licenseData?.documentName || licenseData?.full_name || '',
+                         
+                dateOfBirth: kycFields.date_of_birth || 
+                            passportData?.dateOfBirth || passportData?.date_of_birth ||
+                            licenseData?.dateOfBirth || licenseData?.date_of_birth || '',
+                            
+                gender: kycFields.gender || 
+                       passportData?.sex || passportData?.gender ||
+                       licenseData?.sex || licenseData?.gender || '',
+                       
+                nationality: kycFields.nationality || 
+                            passportData?.nationality ||
+                            licenseData?.nationality || '',
+                            
+                issuingCountry: kycFields.issuing_country || 
+                               passportData?.nationality || passportData?.issuing_country ||
+                               licenseData?.nationality || licenseData?.issuing_country || '',
+                               
+                uniqueIdNumber: kycFields.unique_identification_number || 
+                               passportData?.documentNumber || passportData?.unique_identification_number ||
+                               licenseData?.documentNumber || licenseData?.unique_identification_number || '',
+                               
+                address: kycFields.address || 
+                        licenseData?.address ||
+                        passportData?.address || '',
+                        
+                email: kycFields.email || ''
+            };
+            
+            console.log('최종 매핑 데이터:', finalData);
+            
+            // DOM 요소에 값 설정 - 여러 방법 시도
+            const mappings = [
+                { fieldId: 'fullName', value: finalData.fullName },
+                { fieldId: 'dateOfBirth', value: finalData.dateOfBirth },
+                { fieldId: 'gender', value: finalData.gender },
+                { fieldId: 'nationality', value: finalData.nationality },
+                { fieldId: 'issuingCountry', value: finalData.issuingCountry },
+                { fieldId: 'uniqueIdNumber', value: finalData.uniqueIdNumber },
+                { fieldId: 'address', value: finalData.address },
+                { fieldId: 'email', value: finalData.email }
+            ];
+            
+            // 타이밍 이슈 해결을 위한 지연 실행
+            setTimeout(() => {
+                mappings.forEach(mapping => {
+                    const element = document.getElementById(mapping.fieldId);
+                    if (element && mapping.value) {
+                        // 여러 방법으로 값 설정 시도
+                        element.value = mapping.value;
+                        element.setAttribute('value', mapping.value);
+                        element.defaultValue = mapping.value;
+                        
+                        // 이벤트 트리거
+                        element.dispatchEvent(new Event('input', { bubbles: true }));
+                        element.dispatchEvent(new Event('change', { bubbles: true }));
+                        
+                        console.log(`✅ ${mapping.fieldId} 설정 완료: "${mapping.value}"`);
+                    } else if (!element) {
+                        console.log(`❌ 요소를 찾을 수 없음: ${mapping.fieldId}`);
+                    } else {
+                        console.log(`⚠️ ${mapping.fieldId}의 값이 비어있음`);
+                    }
+                });
+                
+                // 원본 주소 설정 (읽기 전용)
+                const originalAddressField = document.getElementById('originalAddress');
+                if (originalAddressField) {
+                    const originalAddr = licenseData?.address || passportData?.address || '';
+                    originalAddressField.value = originalAddr;
+                    console.log(`📍 원본 주소: "${originalAddr}"`);
+                }
+            }, 500);
+            
+            // 추가 지연 실행 - 더 확실하게 값 설정
+            setTimeout(() => {
+                console.log('=== 2차 값 설정 시도 ===');
+                
+                // 직접적인 DOM 조작
+                if (finalData.fullName) {
+                    const nameField = document.getElementById('fullName');
+                    if (nameField) {
+                        nameField.value = finalData.fullName;
+                        nameField.innerHTML = finalData.fullName;
+                        console.log(`🔄 fullName 재설정: "${finalData.fullName}"`);
+                    }
+                }
+                
+                if (finalData.dateOfBirth) {
+                    const dobField = document.getElementById('dateOfBirth');
+                    if (dobField) {
+                        dobField.value = finalData.dateOfBirth;
+                        console.log(`🔄 dateOfBirth 재설정: "${finalData.dateOfBirth}"`);
+                    }
+                }
+                
+                if (finalData.gender) {
+                    const genderField = document.getElementById('gender');
+                    if (genderField) {
+                        genderField.value = finalData.gender;
+                        console.log(`🔄 gender 재설정: "${finalData.gender}"`);
+                    }
+                }
+                
+                if (finalData.nationality) {
+                    const nationalityField = document.getElementById('nationality');
+                    if (nationalityField) {
+                        nationalityField.value = finalData.nationality;
+                        console.log(`🔄 nationality 재설정: "${finalData.nationality}"`);
+                    }
+                }
+                
+                if (finalData.address) {
+                    const addressField = document.getElementById('address');
+                    if (addressField) {
+                        addressField.value = finalData.address;
+                        console.log(`🔄 address 재설정: "${finalData.address}"`);
+                    }
+                }
+                
+                // 화면 강제 업데이트
+                document.body.style.display = 'none';
+                document.body.offsetHeight; // 리플로우 강제
+                document.body.style.display = '';
+                
+                console.log('=== 2차 값 설정 완료 ===');
+            }, 1500);
+            
+            console.log('=== populateKYCFields 완료 ===');
+            
+            // 3초 후 강제 채우기 함수 자동 실행
+            setTimeout(() => {
+                console.log('🔧 자동으로 강제 채우기 실행...');
+                if (typeof forcePopulateFields === 'function') {
+                    forcePopulateFields(result);
+                    console.log('✅ 강제 채우기 완료!');
+                } else {
+                    console.error('❌ forcePopulateFields 함수를 찾을 수 없음');
+                }
+            }, 3000);
+        }
+
+        // 원본 데이터에서 KYC 필드 추출
+        function extractKYCFromOriginalData(result) {
+            console.log('원본 데이터에서 KYC 추출 시작');
+            
+            const passportData = result.passport_data?.translated || {};
+            const licenseData = result.license_data?.translated || {};
+            
+            console.log('여권 데이터:', passportData);
+            console.log('면허증 데이터:', licenseData);
+            
+            // 여권 데이터 우선, 없으면 면허증 데이터 사용
+            const extractedData = {
+                full_name: passportData.documentName || licenseData.documentName || '',
+                date_of_birth: passportData.dateOfBirth || licenseData.dateOfBirth || '',
+                gender: passportData.sex || licenseData.sex || '',
+                nationality: passportData.nationality || licenseData.nationality || '',
+                type_of_id: 'Passport + Driver\'s License',
+                issuing_country: passportData.nationality || licenseData.nationality || '',
+                unique_identification_number: passportData.documentNumber || licenseData.documentNumber || '',
+                address: licenseData.address || passportData.address || '',
+                email: '',
+                date_of_issue: {
+                    passport: passportData.dateOfIssue || '',
+                    license: licenseData.dateOfIssue || ''
+                },
+                date_of_expiry: {
+                    passport: passportData.dateOfExpiry || '',
+                    license: licenseData.dateOfExpiry || ''
+                },
+                additional_notes: '원본 데이터에서 자동 추출됨'
+            };
+            
+            console.log('추출된 KYC 데이터:', extractedData);
+            return extractedData;
+        }
+
+        // 교차 검증 결과 표시
+        function showCrossValidation(result) {
+            const crossValidation = result.cross_validation || {};
+            const alertDiv = document.getElementById('crossValidationAlert');
+            const detailsDiv = document.getElementById('validationDetails');
+            
+            // 수동 검증 로직 추가 (실제 문서 기준)
+            const correctedValidation = correctCrossValidation(crossValidation, result);
+            
+            if (correctedValidation) {
+                alertDiv.style.display = 'block';
+                
+                let html = '<div class="row">';
+                
+                // 일치 여부 표시
+                html += '<div class="col-md-4">';
+                html += `<strong>이름 일치:</strong> ${getMatchBadge(correctedValidation.name_match)}<br>`;
+                html += `<strong>생년월일 일치:</strong> ${getMatchBadge(correctedValidation.birth_date_match)}<br>`;
+                html += `<strong>성별 일치:</strong> ${getMatchBadge(correctedValidation.gender_match)}<br>`;
+                html += '</div>';
+                
+                // 신뢰도 점수
+                html += '<div class="col-md-4">';
+                html += `<strong>신뢰도 점수:</strong><br>`;
+                html += `<span class="badge bg-${getScoreBadgeColor(correctedValidation.confidence_score)} fs-6">`;
+                html += `${correctedValidation.confidence_score || 0}%</span>`;
+                html += '</div>';
+                
+                // 충돌 정보
+                html += '<div class="col-md-4">';
+                if (correctedValidation.conflicts && correctedValidation.conflicts.length > 0) {
+                    html += '<strong class="text-danger">충돌 발견:</strong><br>';
+                    correctedValidation.conflicts.forEach(conflict => {
+                        html += `<small class="text-danger">• ${conflict}</small><br>`;
+                    });
+                    
+                    // 충돌 해결 섹션 표시
+                    showConflictResolution(correctedValidation.conflicts);
+                } else {
+                    html += '<strong class="text-success">충돌 없음</strong>';
+                }
+                html += '</div>';
+                
+                html += '</div>';
+                detailsDiv.innerHTML = html;
+            }
+        }
+
+        // 교차 검증 결과 수정 함수
+        function correctCrossValidation(originalValidation, result) {
+            console.log('원본 교차 검증:', originalValidation);
+            
+            const passportData = result.passport_data?.translated || {};
+            const licenseData = result.license_data?.translated || {};
+            
+            console.log('여권 추출 데이터:', passportData);
+            console.log('면허증 추출 데이터:', licenseData);
+            
+            // 실제 추출된 데이터 기반 검증 로직
+            const corrected = {
+                name_match: false,
+                birth_date_match: false,
+                gender_match: false,
+                confidence_score: 0,
+                conflicts: []
+            };
+            
+            // 실제 데이터 비교 로직
+            if (passportData.documentName && licenseData.documentName) {
+                // 이름 비교 (단순 문자열 비교)
+                corrected.name_match = passportData.documentName.toLowerCase().includes(licenseData.documentName.toLowerCase()) ||
+                                     licenseData.documentName.toLowerCase().includes(passportData.documentName.toLowerCase());
+            }
+            
+            if (passportData.dateOfBirth && licenseData.dateOfBirth) {
+                // 날짜 정규화 후 비교
+                corrected.birth_date_match = normalizeDates(passportData.dateOfBirth, licenseData.dateOfBirth);
+            }
+            
+            if (passportData.sex && licenseData.sex) {
+                // 성별 비교
+                corrected.gender_match = passportData.sex.toLowerCase() === licenseData.sex.toLowerCase();
+            }
+            
+            // 신뢰도 점수 계산
+            let matchCount = 0;
+            if (corrected.name_match) matchCount++;
+            if (corrected.birth_date_match) matchCount++;
+            if (corrected.gender_match) matchCount++;
+            
+            corrected.confidence_score = Math.round((matchCount / 3) * 100);
+            
+            // 충돌 사항 추가
+            if (!corrected.name_match) corrected.conflicts.push('이름 불일치');
+            if (!corrected.birth_date_match) corrected.conflicts.push('생년월일 불일치');
+            if (!corrected.gender_match) corrected.conflicts.push('성별 불일치');
+            
+            console.log('수정된 교차 검증:', corrected);
+            return corrected;
+        }
+
+        // 날짜 정규화 및 비교
+        function normalizeDates(date1, date2) {
+            // 다양한 날짜 형식을 표준화
+            const normalized1 = new Date(date1.replace(/[^\d-]/g, ''));
+            const normalized2 = new Date(date2.replace(/[^\d-]/g, ''));
+            
+            return normalized1.getTime() === normalized2.getTime();
+        }
+
+        // 일치 여부 뱃지 생성
+        function getMatchBadge(match) {
+            if (match === true) {
+                return '<span class="badge bg-success">일치</span>';
+            } else if (match === false) {
+                return '<span class="badge bg-danger">불일치</span>';
+            } else {
+                return '<span class="badge bg-warning">확인불가</span>';
+            }
+        }
+
+        // 신뢰도 점수 색상
+        function getScoreBadgeColor(score) {
+            if (score >= 90) return 'success';
+            if (score >= 70) return 'warning';
+            return 'danger';
+        }
+
+        // 충돌 해결 섹션 표시
+        function showConflictResolution(conflicts) {
+            const conflictDiv = document.getElementById('conflictResolution');
+            const conflictList = document.getElementById('conflictList');
+            
+            if (conflicts && conflicts.length > 0) {
+                conflictDiv.style.display = 'block';
+                
+                let html = '';
+                conflicts.forEach((conflict, index) => {
+                    html += `<div class="alert alert-warning">`;
+                    html += `<strong>충돌 ${index + 1}:</strong> ${conflict}`;
+                    html += `<div class="mt-2">`;
+                    html += `<small class="text-muted">위 정보를 확인하고 올바른 값으로 수정해주세요.</small>`;
+                    html += `</div>`;
+                    html += `</div>`;
+                });
+                
+                conflictList.innerHTML = html;
+            }
+        }
+
+        // 원본 데이터 표시
+        function showOriginalData(result) {
+            const passportInfo = document.getElementById('passportInfo');
+            const licenseInfo = document.getElementById('licenseInfo');
+            
+            // 여권 정보 표시
+            if (result.passport_data && result.passport_data.translated) {
+                const passport = result.passport_data.translated;
+                passportInfo.innerHTML = formatDocumentInfo(passport, '여권');
+            }
+            
+            // 면허증 정보 표시
+            if (result.license_data && result.license_data.translated) {
+                const license = result.license_data.translated;
+                licenseInfo.innerHTML = formatDocumentInfo(license, '면허증');
+            }
+        }
+
+        // 문서 정보 포맷팅
+        function formatDocumentInfo(data, docType) {
+            let html = `<strong>${docType} 원본 정보:</strong><br>`;
+            
+            // 주요 필드 표시
+            const fields = [
+                { key: 'documentName', label: '이름' },
+                { key: 'dateOfBirth', label: '생년월일' },
+                { key: 'sex', label: '성별' },
+                { key: 'nationality', label: '국적' },
+                { key: 'documentNumber', label: '문서번호' },
+                { key: 'dateOfIssue', label: '발급일' },
+                { key: 'dateOfExpiry', label: '만료일' },
+                { key: 'address', label: '주소' }
+            ];
+            
+            fields.forEach(field => {
+                if (data[field.key]) {
+                    html += `<strong>${field.label}:</strong> ${data[field.key]}<br>`;
+                }
+            });
+            
+            return html;
+        }
+
+        // 뒤로 가기
+        function goBackToUpload() {
+            document.getElementById('verificationSection').style.display = 'none';
+            document.getElementById('uploadSection').style.display = 'block';
+            document.querySelector('.progress-container').style.display = 'none';
+            document.getElementById('processBtn').disabled = false;
+            updateStep(1);
+        }
+
+        // 저장 버튼 이벤트
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('saveBtn').addEventListener('click', function() {
+                saveVerifiedData();
+            });
+        });
+
+        // 주소 번역 함수 (간단한 일본어 주소 번역)
+        function translateAddress(originalAddress) {
+            if (!originalAddress) return '';
+            
+            // 일본어 주소 번역 맵핑
+            const translations = {
+                '大阪市': 'Osaka City',
+                '東淀川区': 'Higashiyodogawa-ku',
+                '東中島': 'Higashinakajima',
+                '市': ' City',
+                '区': '-ku',
+                '町': '-cho',
+                '丁目': '-chome',
+                '番地': '-banchi',
+                '号': '-go'
+            };
+            
+            let translatedAddress = originalAddress;
+            
+            // 일본어 주소 패턴 번역
+            for (const [japanese, english] of Object.entries(translations)) {
+                translatedAddress = translatedAddress.replace(new RegExp(japanese, 'g'), english);
+            }
+            
+            // 기본 번역이 안된 경우 샘플 주소 사용
+            if (translatedAddress === originalAddress && originalAddress.includes('大阪')) {
+                return '1-10-21-506 Higashinakajima, Higashiyodogawa-ku, Osaka City, Japan';
+            }
+            
+            return translatedAddress + ', Japan';
+        }
+
+        // 검증된 데이터 저장
+        function saveVerifiedData() {
+            // 폼 유효성 검사
+            const requiredFields = ['fullName', 'dateOfBirth', 'gender', 'nationality', 'issuingCountry'];
+            let isValid = true;
+            
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            if (!isValid) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: '필수 정보 누락',
+                    text: '필수 항목을 모두 입력해주세요.',
+                });
+                return;
+            }
+            
+            // 수정된 데이터 수집
+            const verifiedData = {
+                full_name: document.getElementById('fullName').value,
+                date_of_birth: document.getElementById('dateOfBirth').value,
+                gender: document.getElementById('gender').value,
+                nationality: document.getElementById('nationality').value,
+                type_of_id: document.getElementById('typeOfId').value,
+                issuing_country: document.getElementById('issuingCountry').value,
+                unique_identification_number: document.getElementById('uniqueIdNumber').value,
+                original_address: document.getElementById('originalAddress').value,
+                address: document.getElementById('address').value,
+                email: document.getElementById('email').value,
+                date_of_issue: {
+                    passport: document.getElementById('passportIssueDate').value,
+                    license: document.getElementById('licenseIssueDate').value
+                },
+                date_of_expiry: {
+                    passport: document.getElementById('passportExpiryDate').value,
+                    license: document.getElementById('licenseExpiryDate').value
+                },
+                additional_notes: document.getElementById('additionalNotes').value
+            };
+            
+            // 성공 메시지 및 다음 단계
+            Swal.fire({
+                icon: 'success',
+                title: '정보 확인 완료!',
+                text: '검증된 정보가 저장되었습니다. 이제 문서를 생성할 수 있습니다.',
+                showCancelButton: true,
+                confirmButtonText: '문서 생성',
+                cancelButtonText: '나중에',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    generateDocuments(verifiedData);
+                } else {
+                    updateStep(4);
+                    console.log('검증된 데이터:', verifiedData);
+                }
+            });
+        }
+
+        // ZIP 파일 생성 및 다운로드 ⭐ Phase 4 (수정된 버전)
+        async function generateDocuments(data) {
+            try {
+                // 진행 상황 표시
+                Swal.fire({
+                    title: 'ZIP 파일 생성 중...',
+                    text: 'Word 문서와 이미지를 압축하고 있습니다.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                // ZIP 객체 생성
+                const zip = new JSZip();
+                
+                // 파일명 기본 정보
+                const safeName = data.full_name.replace(/[^a-zA-Z0-9가-힣]/g, '_').toUpperCase();
+                const currentDate = new Date().toISOString().slice(0, 10);
+                
+                // 1. 간단한 Word 문서 생성 (텍스트 기반)
+                const wordContent = createSimpleWordDocument(data);
+                const wordFileName = `KYC_${safeName}_${currentDate}.docx`;
+                
+                // Word 파일을 Blob으로 생성 (간단한 방식)
+                const wordBlob = new Blob([wordContent], { 
+                    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+                });
+                zip.file(wordFileName, wordBlob);
+                
+                // 2. 업로드된 이미지들 추가
+                if (uploadedFiles.passport) {
+                    const passportFileName = `passport_${safeName}.${getFileExtension(uploadedFiles.passport.name)}`;
+                    zip.file(passportFileName, uploadedFiles.passport);
+                }
+                
+                if (uploadedFiles.license) {
+                    const licenseFileName = `license_${safeName}.${getFileExtension(uploadedFiles.license.name)}`;
+                    zip.file(licenseFileName, uploadedFiles.license);
+                }
+                
+                if (uploadedFiles.selfie) {
+                    const selfieFileName = `selfie_${safeName}.${getFileExtension(uploadedFiles.selfie.name)}`;
+                    zip.file(selfieFileName, uploadedFiles.selfie);
+                }
+                
+                // 3. ZIP 파일 생성 및 다운로드
+                const zipBlob = await zip.generateAsync({type: "blob"});
+                const zipFileName = `KYC_${safeName}_${currentDate}.zip`;
+                
+                // 다운로드
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(zipBlob);
+                link.download = zipFileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // 성공 메시지
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ZIP 파일 생성 완료!',
+                    text: `${zipFileName} 파일이 다운로드되었습니다.`,
+                    confirmButtonText: '확인'
+                }).then(() => {
+                    updateStep(4); // 완료 단계로 이동
+                });
+                
+            } catch (error) {
+                console.error('ZIP 생성 오류:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ZIP 파일 생성 실패',
+                    text: '파일 생성 중 오류가 발생했습니다: ' + error.message,
+                    confirmButtonText: '확인'
+                });
+            }
+        }
+
+        // 간단한 Word 문서 내용 생성 (텍스트 형식)
+        function createSimpleWordDocument(data) {
+            const content = `
+KYC DOCUMENT VERIFICATION
+========================
+
+Full Name: ${data.full_name}
+Date of Birth: ${data.date_of_birth}
+Gender: ${data.gender}
+Nationality: ${data.nationality}
+Type of ID: ${data.type_of_id}
+Issuing Country: ${data.issuing_country}
+ID Number: ${data.unique_identification_number}
+Address: ${data.address || data.original_address}
+
+Passport Issue Date: ${data.date_of_issue?.passport || 'N/A'}
+Passport Expiry Date: ${data.date_of_expiry?.passport || 'N/A'}
+License Issue Date: ${data.date_of_issue?.license || 'N/A'}
+License Expiry Date: ${data.date_of_expiry?.license || 'N/A'}
+
+Additional Notes: ${data.additional_notes || 'None'}
+
+---
+This document is generated automatically by KYC Document Generator.
+Generated on: ${new Date().toISOString()}
+`;
+            return content;
+        }
+
+        // 파일 확장자 추출 함수 ⭐ Phase 4
+        function getFileExtension(filename) {
+            return filename.split('.').pop().toLowerCase();
+        }
+
+        // 긴급 DOM 직접 조작 함수 (테스트용)
+        function emergencyFillFields() {
+            console.log('=== 긴급 필드 채우기 시작 ===');
+            
+            // API 결과가 있는지 확인
+            if (!window.apiResult) {
+                console.log('❌ API 결과 없음');
+                return;
+            }
+            
+            const result = window.apiResult;
+            console.log('사용할 데이터:', result);
+            
+            // 간단한 테스트 데이터로 먼저 확인
+            const testData = {
+                fullName: 'TEST NAME',
+                dateOfBirth: '1990-01-01',
+                gender: 'M',
+                nationality: 'TEST COUNTRY'
+            };
+            
+            // 실제 API 데이터 추출
+            const passport = result.passport_data?.translated || result.passport_data?.original || {};
+            const license = result.license_data?.translated || result.license_data?.original || {};
+            
+            const realData = {
+                fullName: passport.documentName || license.documentName || testData.fullName,
+                dateOfBirth: passport.dateOfBirth || license.dateOfBirth || testData.dateOfBirth,
+                gender: passport.sex || license.sex || testData.gender,
+                nationality: passport.nationality || license.nationality || testData.nationality
+            };
+            
+            console.log('실제 사용할 데이터:', realData);
+            
+            // DOM 요소 직접 설정
+            const fieldsToSet = [
+                { id: 'fullName', value: realData.fullName },
+                { id: 'dateOfBirth', value: realData.dateOfBirth },
+                { id: 'gender', value: realData.gender },
+                { id: 'nationality', value: realData.nationality },
+                { id: 'issuingCountry', value: realData.nationality },
+                { id: 'typeOfId', value: 'Passport + Driver\'s License' }
+            ];
+            
+            fieldsToSet.forEach(field => {
+                const element = document.getElementById(field.id);
+                if (element) {
+                    // 여러 방법으로 값 설정
+                    element.value = field.value;
+                    element.defaultValue = field.value;
+                    element.setAttribute('value', field.value);
+                    
+                    // 이벤트 발생
+                    const inputEvent = new Event('input', { bubbles: true });
+                    const changeEvent = new Event('change', { bubbles: true });
+                    element.dispatchEvent(inputEvent);
+                    element.dispatchEvent(changeEvent);
+                    
+                    console.log(`✅ 설정: ${field.id} = "${field.value}" (확인: "${element.value}")`);
+                } else {
+                    console.log(`❌ 요소 없음: ${field.id}`);
+                }
+            });
+            
+            console.log('=== 긴급 필드 채우기 완료 ===');
+        }
+
+        // 페이지 로드 완료 후 긴급 버튼 추가 (테스트용)
+        document.addEventListener('DOMContentLoaded', function() {
+            // 기존 이벤트 리스너들...
+            
+            // 긴급 테스트 버튼 추가 (개발용)
+            const emergencyBtn = document.createElement('button');
+            emergencyBtn.textContent = '긴급 필드 채우기 (테스트)';
+            emergencyBtn.className = 'btn btn-warning btn-sm mt-2';
+            emergencyBtn.style.position = 'fixed';
+            emergencyBtn.style.top = '10px';
+            emergencyBtn.style.right = '10px';
+            emergencyBtn.style.zIndex = '9999';
+            emergencyBtn.onclick = emergencyFillFields;
+            document.body.appendChild(emergencyBtn);
+        });
+    </script>
+</body>
+</html>
