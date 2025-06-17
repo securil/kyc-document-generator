@@ -1,6 +1,6 @@
 # KYC Document Generator - 개발 브랜치
 
-**🎉 Phase 5 완료! Translation Certification Form 구현**
+**🎉 Phase 6 완료! Google Geocoding API 연동 및 3가지 주소 표시 시스템 + Word 문서 생성 완전 최적화**
 
 여권, 운전면허증, 셀피를 업로드하면 AI가 자동으로 정보를 추출하고 번역하여 전문적인 KYC 문서를 생성하는 웹 애플리케이션입니다.
 
@@ -21,25 +21,29 @@
   - 안정된 버전만 배포
   - 실제 사용자가 접근하는 사이트
 
-## ✨ **최신 상태 (Phase 5 완료)**
+## ✨ **최신 상태 (Phase 6 완료)**
 
-### 🆕 Phase 5 신규 기능
-- ✅ **Translation Certification Form**: 전문적인 번역 인증서 생성
-- ✅ **주소 자동 번역**: 일본어 주소 → 영어 주소 (Google Translate API)
-- ✅ **고유 번호 공란 처리**: SMB 정책에 따른 별도 번호 부여 대응
-- ✅ **실제 .docx 파일**: Microsoft Word 완벽 호환 문서 생성
+### 🆕 Phase 6 신규 기능
+- ✅ **Google Geocoding API 연동**: 일본 주소 검증 및 표준화
+- ✅ **3가지 주소 표시 시스템**: OCR 원본, 현재 번역, 일본 공식 표기법
+- ✅ **주소 검증 파이프라인**: 검증 → 표준화 → 번역 고품질 처리
+- ✅ **일본 공식 표기법**: -shi, -ken 형식 자동 변환
+- ✅ **OCR 오인식 보정**: 지명 데이터 기반 자동 수정
+- ✅ **3단계 폴백 시스템**: 무중단 서비스 보장
+- ✅ **Word 문서 완전 최적화**: 일본 공식 표기법 자동 적용
 
 ### 완료된 기능
 - ✅ **3개 문서 동시 처리**: 여권 + 운전면허증 + 셀피 사진
 - ✅ **AI 자동 분석**: IDAnalyzer API로 정확한 데이터 추출
-- ✅ **고품질 번역**: Google Translate API 연동
+- ✅ **지능형 주소 처리**: Google Geocoding + Translate API 통합
 - ✅ **교차 검증**: 여권과 면허증 정보 일치 확인
 - ✅ **ZIP 파일 출력**: KYC 문서 + 모든 이미지 통합 패키지
+- ✅ **Translation Certification Form**: 전문적인 번역 인증서 생성
 
 ### 개발 중인 기능
-- 🔧 Word 문서 품질 개선
-- 🔧 데이터 추출 정확도 향상
-- 🔧 모바일 최적화
+- 🔧 모바일 카메라 연동
+- 🔧 다국가 주소 시스템 확장
+- 🔧 고급 OCR 보정 시스템
 
 ## 🛠️ **개발 환경 설정**
 
@@ -78,19 +82,22 @@ git push origin gh-pages
 - Firebase Functions (Node.js)
 - IDAnalyzer API
 - Google Translate API
+- Google Geocoding API (Phase 6 신규)
 
 ## 📱 **사용 방법**
 
 1. **파일 업로드**: 여권, 운전면허증, 셀피 사진을 업로드
 2. **AI 분석**: 자동으로 문서에서 정보 추출
-3. **정보 확인**: 추출된 정보 확인 및 수정
-4. **ZIP 다운로드**: KYC 문서와 모든 이미지가 포함된 ZIP 파일 다운로드
+3. **주소 검증**: Google Geocoding API로 주소 표준화 및 검증
+4. **정보 확인**: 3가지 주소 형식 비교 및 선택
+5. **ZIP 다운로드**: KYC 문서와 모든 이미지가 포함된 ZIP 파일 다운로드
 
 ## 🎯 **지원 형식**
 
 - **입력**: JPG, PNG, PDF (여권/면허증), JPG, PNG (셀피)
 - **출력**: ZIP 파일 (KYC 문서 + 3개 이미지)
 - **언어**: 한국어, 일본어 → 영어 번역
+- **주소 형식**: OCR 원본, Google 번역, 일본 공식 표기법
 
 ## 🔒 **보안**
 
@@ -99,6 +106,13 @@ git push origin gh-pages
 - 파일은 서버에 저장되지 않음
 
 ## 📈 **개발 일정**
+
+### Phase 6 완료 (2025-06-17)
+- ✅ **Google Geocoding API 연동**: 일본 주소 검증 및 표준화
+- ✅ **3가지 주소 표시 시스템**: OCR 원본, 현재 번역, 일본 공식 표기법
+- ✅ **검증 파이프라인**: 주소 검증 → 표준화 → 번역 고품질 처리
+- ✅ **폴백 시스템**: 3단계 안전 장치로 무중단 서비스
+- ✅ **OCR 오인식 보정**: 일본 지명 자동 수정 기능
 
 ### Phase 5 완료 (2025-06-16)
 - ✅ **Translation Certification Form**: 전문적인 번역 인증서 생성
@@ -112,10 +126,10 @@ git push origin gh-pages
 - ✅ 6단계 워크플로우
 - ✅ GitHub Pages 배포 (main + gh-pages 브랜치)
 
-### 향후 계획
-- 🔧 교차 검증 알고리즘 개선
-- 🔧 모바일 반응형 최적화
-- 🔧 다국가 신분증 지원 확장
+### 향후 계획 (Phase 7)
+- 🔧 모바일 카메라 연동 (웹 브라우저에서 직접 촬영)
+- 🔧 다국가 주소 시스템 확장 (미국, 캐나다, 영국 등)
+- 🔧 고급 OCR 보정 시스템 (머신러닝 기반)
 
 ## 👨‍💻 **개발자**
 
@@ -132,6 +146,8 @@ git push origin gh-pages
 
 ## 🔄 **배포 히스토리**
 
+- **v2.2.1 (2025-06-17)**: Phase 6 최종 완성 - Word 문서 일본 공식 표기법 완전 적용
+- **v2.2 (2025-06-17)**: Phase 6 완성 - Google Geocoding API 연동 및 3가지 주소 시스템
 - **v2.1 (2025-06-16)**: Phase 5 완성 - Translation Certification Form
 - **v2.0 (2025-06-16)**: Phase 4 완성 - 셀피 + ZIP 기능
 - **v1.5 (2025-06-14)**: Phase 3 완성 - Word 문서 생성
@@ -139,5 +155,5 @@ git push origin gh-pages
 
 ---
 
-*KYC Document Generator v2.1 Phase 5 - Development Branch*  
-*Last updated: 2025-06-16*
+*KYC Document Generator v2.2.1 Phase 6 - Development Branch*  
+*Last updated: 2025-06-17*
