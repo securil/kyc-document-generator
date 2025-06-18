@@ -15,7 +15,7 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/css/main.css">
-    <link rel="stylesheet" href="assets/css/components.css?v=3.0.8">
+    <link rel="stylesheet" href="assets/css/components.css">
 </head>
 <body>
     <!-- Main Container -->
@@ -150,31 +150,53 @@
     <!-- ZIP File Generation Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-    <!-- Application JavaScript Modules (캐시 방지) -->
-    <script src="assets/js/config.js?v=3.0.4"></script>
-    <script src="assets/js/utils.js?v=3.0.4"></script>
-    <script src="assets/js/api.js?v=3.0.7"></script>
-    <script src="assets/js/ui.js?v=3.0.4"></script>
+    <!-- Application JavaScript Modules -->
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/utils.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/ui.js"></script>
     
-    <!-- Component JavaScript Modules (캐시 방지) -->
-    <script src="assets/js/components/passport-step.js?v=3.0.5"></script>
-    <script src="assets/js/components/license-step.js?v=3.0.6"></script>
-    <script src="assets/js/components/selfie-step.js?v=3.0.8"></script>
-    <script src="assets/js/components/review-step.js?v=3.0.8"></script>
+    <!-- Component JavaScript Modules -->
+    <script src="assets/js/components/passport-step.js"></script>
+    <script src="assets/js/components/license-step.js"></script>
+    <script src="assets/js/components/selfie-step.js"></script>
+    <script src="assets/js/components/review-step.js"></script>
     
-    <!-- Workflow Manager (캐시 방지) -->
-    <script src="assets/js/workflow-manager.js?v=3.0.4"></script>
+    <!-- Workflow Manager -->
+    <script src="assets/js/workflow-manager.js"></script>
 
     <!-- Application Initialization -->
     <script>
         // DOM이 로드되면 애플리케이션 시작
         document.addEventListener('DOMContentLoaded', function() {
-            debugLog('🚀 KYC Document Generator v3.0 시작');
-            
-            // 워크플로우 매니저 초기화 (자동으로 전역 변수로 설정됨)
-            new WorkflowManager();
-            
-            debugLog('✅ 애플리케이션 초기화 완료');
+            // 모든 스크립트가 로드될 때까지 잠시 대기
+            setTimeout(function() {
+                try {
+                    debugLog('🚀 KYC Document Generator v3.0 시작');
+                    
+                    // 클래스 로드 확인
+                    const requiredClasses = ['PassportStep', 'LicenseStep', 'SelfieStep', 'ReviewStep', 'WorkflowManager'];
+                    const missingClasses = [];
+                    
+                    requiredClasses.forEach(className => {
+                        if (typeof window[className] === 'undefined') {
+                            missingClasses.push(className);
+                        }
+                    });
+                    
+                    if (missingClasses.length > 0) {
+                        console.error('❌ 다음 클래스들이 로드되지 않았습니다:', missingClasses);
+                        return;
+                    }
+                    
+                    // 워크플로우 매니저 초기화
+                    window.workflowManager = new WorkflowManager();
+                    
+                    debugLog('✅ 애플리케이션 초기화 완료');
+                } catch (error) {
+                    console.error('❌ 초기화 오류:', error);
+                }
+            }, 100); // 100ms 대기
         });
         
         // 전역 오류 처리

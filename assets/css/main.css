@@ -1,0 +1,204 @@
+/**
+ * KYC Document Generator v3.0 - Main Styles
+ * 기본 레이아웃 및 공통 스타일
+ */
+
+/* 전역 스타일 */
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* 메인 컨테이너 */
+.main-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* 카드 스타일 */
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    background: rgba(255,255,255,0.95);
+    margin-bottom: 2rem;
+}
+
+.card-header {
+    background: rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    border-radius: 15px 15px 0 0 !important;
+}
+
+/* 단계 표시기 */
+.step-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+.step::after {
+    content: '';
+    position: absolute;
+    top: 25px;
+    left: 50%;
+    width: 100%;
+    height: 2px;
+    background: #dee2e6;
+    z-index: -1;
+}
+
+.step:last-child::after {
+    display: none;
+}
+
+.step-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #dee2e6;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.step-text {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* 활성 단계 */
+.step.active .step-circle {
+    background: #007bff;
+    color: white;
+    transform: scale(1.1);
+}
+
+.step.active .step-text {
+    color: #007bff;
+    font-weight: 600;
+}
+
+/* 완료된 단계 */
+.step.completed .step-circle {
+    background: #28a745;
+    color: white;
+}
+
+.step.completed .step-text {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.step.completed::after {
+    background: #28a745;
+}
+
+/* 진행률 바 */
+.progress-container {
+    display: none;
+    margin: 20px 0;
+}
+
+.progress {
+    height: 20px;
+    border-radius: 10px;
+    background-color: rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+/* 헤더 스타일 */
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.header h1 {
+    color: white;
+    margin-bottom: 0.5rem;
+    font-weight: 300;
+}
+
+.header p {
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 0;
+}
+
+/* 버튼 스타일 */
+.btn-process {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    border: none;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.btn-process:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
+.btn-process:disabled {
+    background: #6c757d;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .main-container {
+        padding: 10px;
+    }
+    
+    .step-indicator {
+        margin-bottom: 20px;
+    }
+    
+    .step-circle {
+        width: 40px;
+        height: 40px;
+        font-size: 0.9rem;
+    }
+    
+    .step-text {
+        font-size: 0.8rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .step-text {
+        display: none;
+    }
+    
+    .step::after {
+        top: 20px;
+    }
+}
